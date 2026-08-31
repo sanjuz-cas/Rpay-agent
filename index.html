@@ -269,6 +269,9 @@
     .activity-detail { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.4; }
     .activity-time { color: var(--muted-light); font-size: 9px; white-space: nowrap; }
     .activity-amount { margin-top: 4px; color: var(--green); font-size: 10px; font-weight: 700; }
+    .reply-box { margin-top: 13px; padding: 12px; border: 1px solid #f2d39b; border-radius: 10px; background: #fffaf0; }
+    .reply-box label { display:block; margin-bottom:5px; color:var(--amber); font-size:10px; font-weight:800; text-transform:uppercase; }
+    .reply-box input { max-width: 560px; }
     .preview-card { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: center; padding: 22px; }
     .preview-copy h3 { margin-bottom: 5px; font-size: 16px; letter-spacing: -.025em; }
     .preview-copy p { margin-bottom: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
@@ -442,15 +445,15 @@
     </section>
 
     <section class="section">
-      <div class="section-heading"><div><h2>Create a cake preview</h2><p>Prepare a design brief before image generation is connected.</p></div><span class="section-kicker">Optional creative step</span></div>
+      <div class="section-heading"><div><h2>Create a cake preview</h2><p>Generate a visual concept when the customer explicitly asks for a design.</p></div><span class="section-kicker">FLUX · Hugging Face</span></div>
       <article class="card preview-card">
         <div class="preview-copy">
           <h3>Make the idea tangible.</h3>
           <p>Describe a cake design and keep it alongside the order. Preview generation will plug into this surface when connected.</p>
           <div class="preview-form"><label for="designPrompt">Design description</label><input id="designPrompt" placeholder="Pastel blue cake with football decorations…" /></div>
-          <div class="order-actions"><button class="button secondary" type="button" data-action="preview-coming">Generate preview</button><button class="button ghost" type="button" data-action="preview-coming">Approve design</button></div>
+          <div class="order-actions"><button class="button secondary" type="button" data-action="generate-preview">Generate preview</button><button class="button ghost" type="button" data-action="preview-coming">Approve design</button></div>
         </div>
-        <div class="preview-stage" aria-label="Cake preview placeholder"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 11.5h16v7.25A1.25 1.25 0 0 1 18.75 20H5.25A1.25 1.25 0 0 1 4 18.75V11.5Z"/><path d="M3 8.75h18v2.75H3zM8 8.75c-1.8 0-2.5-1.06-2.5-2.04 0-1.1.93-1.96 2.04-1.96C9.3 4.75 10 6.35 12 8.75c2-2.4 2.7-4 4.46-4 1.11 0 2.04.86 2.04 1.96 0 .98-.7 2.04-2.5 2.04"/><path d="M12 11.5V20"/></svg><strong>Cake preview will appear here</strong><span>No image has been generated yet. This is not connected to an image provider.</span></div>
+        <div id="previewStage" class="preview-stage" aria-label="Cake preview"><strong>Cake preview will appear here</strong><span>Ask Cakebot to generate a visual concept.</span></div>
       </article>
     </section>
   </main>
@@ -458,7 +461,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const state = { orders: [], audit: [], status: {}, busy: new Set(), processing: false, refreshInFlight: false, toastTimer: null };
+    const state = { orders: [], audit: [], wallet: { balance: 0, transactions: [] }, status: {}, busy: new Set(), processing: false, refreshInFlight: false, toastTimer: null };
     const processingStages = ['Understanding request', 'Extracting order details', 'Checking availability', 'Applying pricing rules', 'Deciding whether approval is required', 'Creating Razorpay payment link'];
 
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]));
@@ -472,8 +475,8 @@
     const initials = (name) => String(name || 'Customer').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
     const getItems = (order) => order.parsed?.items || [];
     const primaryDate = (order) => getItems(order)[0]?.date || 'Not set';
-    const feeCount = () => state.orders.filter((order) => Number(order.perRunFeeCharged) > 0).length;
-    const walletBalance = () => Math.max(0, 250 - feeCount() * 5);
+    const feeCount = () => state.wallet.transactions.filter((entry) => entry.type === 'debit').length;
+    const walletBalance = () => Number(state.wallet.balance || 0);
 
     async function api(path, options = {}) {
       const response = await fetch(path, options);
@@ -504,6 +507,7 @@
       if (order.status === 'awaiting_payment') return ['Awaiting payment', 'info'];
       if (order.status === 'escalated') return ['Escalated safely', 'blocked'];
       if (order.status === 'rejected') return ['Quote declined', 'rejected'];
+      if (order.status === 'waiting_customer') return ['Waiting for customer', 'pending'];
       if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return ['Needs baker approval', 'pending'];
       if (order.approvedByBaker) return ['Approved · payment ready', 'info'];
       return ['Quote ready', 'success'];
@@ -514,6 +518,7 @@
       if (order.status === 'awaiting_payment') return `I found availability and quoted ${formatINR(order.amount)}. A secure Razorpay payment link is ready for the customer.`;
       if (order.status === 'escalated') return `I paused safely: ${order.reasoning || 'This request needs a human review.'} No payment link was created.`;
       if (order.status === 'rejected') return 'The baker declined this quote. No payment link was created and no wallet fee was charged.';
+      if (order.status === 'waiting_customer') return `I need one detail before I can quote this order: ${order.clarificationQuestion || order.reasoning}`;
       if (order.decision === 'PENDING_APPROVAL') return `This order totals ${formatINR(order.amount)}, which is above the ₹5,000 auto-approval limit. I paused the payment request and asked the baker for approval.`;
       return `I found availability and quoted ${formatINR(order.amount)}. I’m creating a secure Razorpay payment link now.`;
     }
@@ -584,6 +589,7 @@
       if (order.status === 'confirmed') return `<div class="decision-panel success"><strong>Order completed successfully</strong>Customer payment ${formatINR(order.amount)} confirmed for ${formatDate(primaryDate(order))}. ${order.feeMode === 'simulated' ? 'Fee simulated in mock mode.' : order.feeMode === 'order-created' ? 'Razorpay order created for the agent fee; no debit is represented here.' : 'Agent fee state is pending confirmation.'}</div>`;
       if (order.status === 'escalated') return `<div class="decision-panel blocked"><strong>Agent paused safely</strong>${escapeHtml(order.reasoning || 'This request needs human review.')} No payment link was created and no wallet fee was charged.</div>`;
       if (order.status === 'rejected') return `<div class="decision-panel blocked"><strong>Quote declined by baker</strong>No payment link was created and no wallet fee was charged.</div>`;
+      if (order.status === 'waiting_customer') return `<div class="decision-panel warn"><strong>Waiting for customer information</strong>${escapeHtml(order.clarificationQuestion || order.reasoning || 'A required order detail is missing.')} No payment link or wallet fee has been created.</div>`;
       if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return `<div class="decision-panel warn"><strong>Human approval required</strong>${escapeHtml(order.reasoning || 'This order is above the auto-approval limit.')}</div>`;
       return `<div class="decision-panel"><strong>Agent reasoning</strong>${escapeHtml(order.reasoning || 'Order is within the agent’s current guardrails.')}</div>`;
     }
@@ -596,6 +602,7 @@
 
     function orderActions(order) {
       if (order.status === 'awaiting_payment') return '';
+      if (order.status === 'waiting_customer') return `<div class="reply-box"><label for="reply-${escapeHtml(order.id)}">Customer reply</label><input id="reply-${escapeHtml(order.id)}" placeholder="e.g. Chocolate flavor, please" /><button class="button primary" type="button" data-action="customer-reply" data-id="${escapeHtml(order.id)}" data-busy-key="customer-reply-${escapeHtml(order.id)}">Continue workflow</button></div>`;
       if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return `<div class="order-actions"><button class="button warn" type="button" data-action="approve" data-id="${escapeHtml(order.id)}" data-busy-key="approve-${escapeHtml(order.id)}">Approve quote</button><button class="button danger" type="button" data-action="reject" data-id="${escapeHtml(order.id)}" data-busy-key="reject-${escapeHtml(order.id)}">Reject order</button></div>`;
       if (order.status === 'quoted' && !order.paymentLink) return `<div class="order-actions"><button class="button primary" type="button" data-action="send-link" data-id="${escapeHtml(order.id)}" data-busy-key="send-payment-link-${escapeHtml(order.id)}">Create payment link</button></div>`;
       return '';
@@ -616,6 +623,10 @@
     }
 
     const eventCopy = {
+      AGENT_THINKING: ['Agent reasoning', 'Planning the safest next step from the customer request.', ''],
+      TOOL_CALL: ['Tool called', 'The agent used a deterministic business tool.', ''],
+      HITL_REQUESTED: ['Human input requested', 'The workflow is paused until the right person responds.', 'warn'],
+      POLICY_DECISION: ['Policy decision', 'All configured guardrails passed.', 'success'],
       AUTO_APPROVED: ['Order auto-approved', 'Quote stayed within availability, confidence, and amount limits.', 'success'],
       PENDING_APPROVAL: ['Approval required', 'The quote crossed the ₹5,000 auto-approval limit.', 'warn'],
       ESCALATE: ['Request paused safely', 'Cakebot escalated instead of guessing or creating a payment link.', 'danger'],
@@ -638,13 +649,13 @@
       }
       target.innerHTML = state.audit.slice(0, 24).map((event) => {
         const copy = eventCopy[event.action] || [event.action.replaceAll('_', ' '), event.reasoning || 'Agent activity recorded.', ''];
-        return `<div class="activity-item"><span class="activity-icon ${copy[2]}">${copy[2] === 'danger' ? '!' : copy[2] === 'warn' ? '!' : '✓'}</span><div><div class="activity-title">${escapeHtml(copy[0])}${event.orderId ? ` <span style="color:var(--muted-light);font-weight:500;">· ${escapeHtml(event.orderId)}</span>` : ''}</div><div class="activity-detail">${escapeHtml(event.reasoning || copy[1])}</div>${event.amount ? `<div class="activity-amount">${formatINR(event.amount)}${event.action === 'PER_RUN_FEE_CHARGED' ? ' · wallet effect' : ''}</div>` : ''}</div><time class="activity-time">${escapeHtml(formatTime(event.timestamp))}</time></div>`;
+        return `<div class="activity-item"><span class="activity-icon ${copy[2]}">${copy[2] === 'danger' ? '!' : copy[2] === 'warn' ? '!' : event.action === 'TOOL_CALL' ? '⚙' : '✓'}</span><div><div class="activity-title">${escapeHtml(copy[0])}${event.tool ? ` <span style="color:var(--blue);font-weight:500;">· ${escapeHtml(event.tool)}()</span>` : ''}${event.audience ? ` <span style="color:var(--amber);font-weight:500;">· ${escapeHtml(event.audience)} input</span>` : ''}${event.orderId ? ` <span style="color:var(--muted-light);font-weight:500;">· ${escapeHtml(event.orderId)}</span>` : ''}</div><div class="activity-detail">${escapeHtml(event.reasoning || copy[1])}</div>${event.amount ? `<div class="activity-amount">${formatINR(event.amount)}${event.action === 'PER_RUN_FEE_CHARGED' ? ' · wallet effect' : ''}</div>` : ''}</div><time class="activity-time">${escapeHtml(formatTime(event.timestamp))}</time></div>`;
       }).join('');
     }
 
     function renderWalletTransactions() {
       const target = document.getElementById('walletTransactions');
-      const entries = [{ amount: 250, label: 'Demo wallet provisioned', meta: 'Simulated starting balance' }, ...state.orders.filter((order) => order.perRunFeeCharged).map((order) => ({ amount: -5, label: 'Cake order completed', meta: `${order.customerName} · ${order.feeMode === 'simulated' ? 'Fee simulated' : 'Razorpay order created'}` }))];
+      const entries = state.wallet.transactions || [];
       target.innerHTML = entries.length ? entries.slice(0, 6).map((entry) => `<div class="activity-item"><span class="activity-icon ${entry.amount > 0 ? 'success' : ''}">${entry.amount > 0 ? '+' : '−'}</span><div><div class="activity-title">${escapeHtml(entry.label)}</div><div class="activity-detail">${escapeHtml(entry.meta)}</div></div><div class="activity-amount" style="color:${entry.amount > 0 ? 'var(--green)' : 'var(--red)'}">${entry.amount > 0 ? '+' : '−'}${formatINR(Math.abs(entry.amount))}</div></div>`).join('') : '<div class="empty-state"><strong>No wallet activity yet.</strong><span>Add funds to let Cakebot complete paid workflows.</span></div>';
     }
 
@@ -657,9 +668,10 @@
       if (state.refreshInFlight) return;
       state.refreshInFlight = true;
       try {
-        const [orders, audit] = await Promise.all([api('/api/orders'), api('/api/audit')]);
+        const [orders, audit, wallet] = await Promise.all([api('/api/orders'), api('/api/audit'), api('/api/wallet')]);
         state.orders = Array.isArray(orders) ? orders : [];
         state.audit = Array.isArray(audit) ? audit : [];
+        state.wallet = wallet || { balance: 0, transactions: [] };
         renderMetrics(); renderOrders(); renderActivity(); renderWalletTransactions();
       } catch (error) {
         if (!silent) showToast(error.message, true);
@@ -716,10 +728,37 @@
       if (action === 'reject') orderAction(id, 'reject', 'Quote declined safely.');
       if (action === 'send-link') orderAction(id, 'send-payment-link', 'Razorpay payment link created.');
       if (action === 'mark-paid') orderAction(id, 'mark-paid', 'Customer payment simulated and order completed.');
+      if (action === 'customer-reply') {
+        const input = document.getElementById(`reply-${id}`);
+        const message = input?.value.trim();
+        if (!message) return showToast('Enter the customer reply first.', true);
+        setBusy(`customer-reply-${id}`, true);
+        api(`/api/order/${encodeURIComponent(id)}/customer-reply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message }) })
+          .then(() => { showToast('Customer reply received. Workflow resumed.'); refresh(true); })
+          .catch((error) => showToast(error.message, true))
+          .finally(() => setBusy(`customer-reply-${id}`, false));
+      }
       if (action === 'copy-link') copyLink(id);
-      if (action === 'add-funds') showToast('Wallet funding is represented through Razorpay. This demo does not move real funds.');
+      if (action === 'add-funds') {
+        const amount = Number(window.prompt('Add demo wallet funds (₹1–₹10,000):', '500'));
+        if (Number.isFinite(amount) && amount > 0) {
+          setBusy('top-up', true);
+          api('/api/wallet/top-up', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount }) })
+            .then(() => { showToast('Wallet topped up.'); refresh(true); })
+            .catch((error) => showToast(error.message, true))
+            .finally(() => setBusy('top-up', false));
+        }
+      }
       if (action === 'view-transactions') document.getElementById('transactions').scrollIntoView({ behavior: 'smooth', block: 'center' });
       if (action === 'preview-coming') showToast('Preview generation is ready for an image provider connection, but no image was generated.');
+      if (action === 'generate-preview') {
+        const design = document.getElementById('designPrompt').value.trim();
+        if (!design) return showToast('Describe the cake design first.', true);
+        const stage = document.getElementById('previewStage'); stage.innerHTML = '<strong>Generating preview…</strong><span>Calling generate_cake_design()</span>';
+        api('/api/design-preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ design }) })
+          .then((result) => { stage.innerHTML = result.image ? `<img src="${result.image}" alt="Generated cake design preview" style="max-width:100%;max-height:330px;border-radius:10px;object-fit:contain;" /><span>Generated with ${escapeHtml(result.model || 'Hugging Face')}</span>` : `<strong>${escapeHtml(result.error || 'Preview failed')}</strong>`; if (!result.image) showToast(result.error || 'Preview failed', true); else showToast('Cake preview generated.'); })
+          .catch((error) => { stage.innerHTML = `<strong>Preview unavailable</strong><span>${escapeHtml(error.message)}</span>`; showToast(error.message, true); });
+      }
     });
 
     loadStatus(); refresh(); setInterval(() => refresh(true), 4000); renderMetrics(); renderWalletTransactions(); updateDecisionFlow();

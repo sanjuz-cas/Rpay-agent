@@ -51,6 +51,22 @@ function checkAvailability(items) {
 async function decideOnOrder(message) {
   const parsed = await parseOrderMessage(message);
   const items = parsed.items || [];
+  const trace = [
+    { action: 'AGENT_THINKING', reasoning: 'Interpreting the customer message and identifying the requested bakery task.' },
+    { action: 'TOOL_CALL', tool: 'extract_order_details', reasoning: `Extracted ${items.length || 0} cake item(s) from the message.` },
+  ];
+
+  if (parsed.confidence === 'needs_customer_input') {
+    const missing = parsed.missingFields?.[0];
+    return {
+      decision: 'NEEDS_CUSTOMER_INPUT',
+      reasoning: missing?.question || 'A required order detail is missing. The customer needs to clarify before payment.',
+      clarificationQuestion: missing?.question || 'Could you provide the missing order detail?',
+      parsed,
+      trace: [...trace, { action: 'HITL_REQUESTED', audience: 'customer', reasoning: missing?.question || 'A required detail is missing.' }],
+      requiresHuman: false,
+    };
+  }
 
   if (parsed.confidence === 'low') {
     return {
@@ -62,17 +78,20 @@ async function decideOnOrder(message) {
   }
 
   const availability = checkAvailability(items);
+  trace.push({ action: 'TOOL_CALL', tool: 'check_availability', reasoning: 'Checking requested delivery dates against the bakery calendar.' });
 
   if (!availability.available) {
     return {
       decision: 'ESCALATE',
       reasoning: availability.reason,
       parsed,
+      trace: [...trace, { action: 'HITL_REQUESTED', audience: 'baker', reasoning: availability.reason }],
       requiresHuman: true,
     };
   }
 
   const amount = quotePrice(items);
+  trace.push({ action: 'TOOL_CALL', tool: 'calculate_price', reasoning: `Calculated a deterministic quote of ₹${amount}.` });
   const requiresApproval = amount > AUTO_APPROVE_LIMIT;
 
   // Human-readable summary: "1.5kg chocolate (2026-09-20) + 2.25kg red velvet (2026-09-25)"
@@ -89,6 +108,7 @@ async function decideOnOrder(message) {
     amount,
     itemsSummary,
     requiresHuman: requiresApproval,
+    trace: [...trace, requiresApproval ? { action: 'HITL_REQUESTED', audience: 'baker', reasoning: `Quote exceeds the ₹${AUTO_APPROVE_LIMIT} approval policy.` } : { action: 'POLICY_DECISION', reasoning: 'All guardrails passed; the agent may proceed autonomously.' }],
   };
 }
 

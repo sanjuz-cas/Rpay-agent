@@ -12,8 +12,9 @@
 const SYSTEM_PROMPT = `You are an order-intake parser for a home baker's AI agent.
 Extract ALL cake items from the customer's message — there may be more than one.
 Respond with ONLY a JSON object, no other text, in this exact shape:
-{"items": [{"weightKg": number, "flavor": string, "date": "YYYY-MM-DD" or null}], "confidence": "high" or "low", "reasoning": string}
-Use "low" confidence if any item's weight, flavor, or date is ambiguous, missing, or you had to guess.
+{"items": [{"weightKg": number, "flavor": string or null, "design": string or null, "date": "YYYY-MM-DD" or null}], "confidence": "high", "low", or "needs_customer_input", "missingFields": [{"itemIndex": number, "field": string, "question": string}], "reasoning": string}
+Separate cake flavor from design or decoration. Colors, themes, lettering, characters, and decorations are not flavors. For example, "pastel blue football cake" means design = "pastel blue football" and flavor = null.
+Use "needs_customer_input" when a required customer-owned field such as flavor, weight, or date is missing. Use "low" only when the request is ambiguous or unsafe to interpret.
 Never invent a date that wasn't stated in the message.`;
 
 function heuristicParse(message) {
@@ -21,11 +22,20 @@ function heuristicParse(message) {
   const dateMatch = message.match(/(\d{4}-\d{2}-\d{2})/);
   const flavors = ['chocolate', 'vanilla', 'red velvet', 'fruit'];
   const flavorMatch = flavors.find(f => message.toLowerCase().includes(f));
+  const itemMatches = [...message.matchAll(/(\d+(?:\.\d+)?)\s*(kg|g)\b/ig)];
+  const items = itemMatches.map((match, index) => {
+    const segment = message.slice(match.index || 0, itemMatches[index + 1]?.index || message.length).toLowerCase();
+    const segmentFlavor = flavors.find(f => segment.includes(f));
+    const designMatch = segment.match(/(pastel\s+blue\s+football|football(?:\s+design)?|birthday|wedding)\s*(?:design|cake)?/i);
+    const rawWeight = parseFloat(match[1]);
+    return { weightKg: match[2].toLowerCase() === 'g' ? rawWeight / 1000 : rawWeight, flavor: segmentFlavor, design: designMatch ? designMatch[0].trim() : null, date: dateMatch ? dateMatch[1] : null };
+  });
 
   return {
     weightKg: weightMatch ? parseFloat(weightMatch[1]) : 1,
     date: dateMatch ? dateMatch[1] : null,
     flavor: flavorMatch || 'default',
+    items,
   };
 }
 
@@ -40,18 +50,21 @@ function parseModelJSON(raw) {
     const items = rawItems.map(item => ({
       weightKg: typeof item.weightKg === 'number' ? item.weightKg : 1,
       flavor: (item.flavor || 'default').toLowerCase(),
+      design: item.design || null,
       date: item.date || null,
     }));
     return {
       items,
-      confidence: parsed.confidence === 'high' ? 'high' : 'low',
+      confidence: ['high', 'needs_customer_input'].includes(parsed.confidence) ? parsed.confidence : 'low',
+      missingFields: Array.isArray(parsed.missingFields) ? parsed.missingFields : [],
       reasoning: parsed.reasoning || '',
       usedFallback: false,
     };
   } catch (e) {
     return {
       items: [{ weightKg: 1, flavor: 'default', date: null }],
-      confidence: 'low',
+    confidence: 'low',
+    missingFields: [],
       reasoning: 'Model response could not be parsed as JSON — escalating rather than guessing.',
     };
   }
@@ -119,10 +132,13 @@ async function parseOrderWithLLM(message) {
     // Keep the demo usable when the provider is temporarily unreachable.
     // The deterministic parser is only trusted when all core fields are explicit.
     const fallback = heuristicParse(message);
-    const complete = Boolean(message.match(/(\d+(\.\d+)?)\s*kg/i) && fallback.date && fallback.flavor !== 'default');
+    const fallbackItems = fallback.items?.length ? fallback.items : [{ weightKg: fallback.weightKg, flavor: fallback.flavor, date: fallback.date }];
+    const missingFlavorIndex = fallbackItems.findIndex(item => !item.flavor);
+    const complete = Boolean(fallbackItems.length && fallback.date && missingFlavorIndex < 0);
     return {
-      items: [{ weightKg: fallback.weightKg, flavor: fallback.flavor, date: fallback.date }],
-      confidence: complete ? 'high' : 'low',
+      items: fallbackItems,
+      confidence: complete ? 'high' : missingFlavorIndex >= 0 ? 'needs_customer_input' : 'low',
+      missingFields: missingFlavorIndex >= 0 ? [{ itemIndex: missingFlavorIndex, field: 'flavor', question: `What flavor would you like for the ${fallbackItems[missingFlavorIndex].weightKg}kg cake?` }] : [],
       reasoning: complete
         ? `Model unavailable (${err.message}); used deterministic parser because weight, flavor, and date were explicit.`
         : `Model unavailable (${err.message}); required order fields were not explicit, so review is required.`,
@@ -132,10 +148,13 @@ async function parseOrderWithLLM(message) {
 
   console.warn('[llmAgent] No GEMINI_API_KEY or ANTHROPIC_API_KEY set — using deterministic fallback.');
   const fallback = heuristicParse(message);
-  const complete = Boolean(message.match(/(\d+(\.\d+)?)\s*kg/i) && fallback.date && fallback.flavor !== 'default');
-  return {
-    items: [{ weightKg: fallback.weightKg, flavor: fallback.flavor, date: fallback.date }],
-    confidence: complete ? 'high' : 'low',
+    const fallbackItems = fallback.items?.length ? fallback.items : [{ weightKg: fallback.weightKg, flavor: fallback.flavor, date: fallback.date }];
+    const missingFlavorIndex = fallbackItems.findIndex(item => !item.flavor);
+    const complete = Boolean(fallbackItems.length && fallback.date && missingFlavorIndex < 0);
+    return {
+    items: fallbackItems,
+    confidence: complete ? 'high' : missingFlavorIndex >= 0 ? 'needs_customer_input' : 'low',
+    missingFields: missingFlavorIndex >= 0 ? [{ itemIndex: missingFlavorIndex, field: 'flavor', question: `What flavor would you like for the ${fallbackItems[missingFlavorIndex].weightKg}kg cake?` }] : [],
     reasoning: complete
       ? 'No model API key configured — used the deterministic parser because weight, flavor, and date were explicit.'
       : 'No model API key configured — required order fields were not explicit, so review is required.',

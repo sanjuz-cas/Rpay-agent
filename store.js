@@ -3,6 +3,11 @@
 
 const orders = new Map();
 const auditLog = [];
+const wallet = {
+  balance: 250,
+  transactions: [{ id: 'initial', amount: 250, type: 'credit', label: 'Demo wallet provisioned', meta: 'Simulated starting balance', createdAt: new Date().toISOString() }],
+  debitedOrders: new Set(),
+};
 
 // Simulates the baker's existing bookings, used to demonstrate the
 // "agent detects a conflict and escalates instead of guessing" failure case.
@@ -18,4 +23,4 @@ function logAudit(entry) {
   return record;
 }
 
-module.exports = { orders, auditLog, bookedDates, logAudit };
+module.exports = { orders, auditLog, bookedDates, wallet, logAudit };
