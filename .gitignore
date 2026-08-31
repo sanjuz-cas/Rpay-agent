@@ -1,0 +1,47 @@
+# =======================
+# Environment & Secrets
+# =======================
+.env
+.env.local
+.env.*.local
+
+# =======================
+# Node.js
+# =======================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =======================
+# Build / Output
+# =======================
+dist/
+build/
+out/
+.cache/
+
+# =======================
+# OS Files
+# =======================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =======================
+# Editor / IDE
+# =======================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# =======================
+# Logs
+# =======================
+logs/
+*.log

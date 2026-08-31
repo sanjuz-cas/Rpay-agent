@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Cakebot Agent — Demo</title>
+<style>
+  :root { --ink:#172033; --muted:#718096; --line:#e6eaf0; --accent:#16835b; --warn:#c46a16; --danger:#c03945; --bg:#f5f7fb; --purple:#6558d3; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 1120px; margin: 0 auto; padding: 32px 28px 70px; color: var(--ink); background:var(--bg); }
+  h1 { font-size: 28px; letter-spacing:-.7px; margin:0 0 6px; }
+  .sub { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
+  .card { background:white; border: 1px solid var(--line); box-shadow:0 8px 24px rgba(35,48,75,.05); border-radius:16px; padding: 22px; margin-bottom: 18px; }
+  body > h1:before { content:'CAKEBOT  /  MERCHANT CONSOLE'; display:block; color:var(--purple); font-size:11px; letter-spacing:1.5px; font-weight:800; margin-bottom:10px; }
+  .topbar { display:flex; justify-content:space-between; align-items:flex-start; }
+  textarea, input { width: 100%; padding: 12px 13px; border: 1px solid var(--line); border-radius: 9px; font-family: inherit; font-size: 14px; background:#fbfcfe; }
+  textarea { min-height: 60px; resize: vertical; }
+  label { font-size: 12px; color: var(--muted); display: block; margin: 10px 0 4px; }
+  button { background: var(--ink); color: white; border: none; padding: 10px 16px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight:700; margin-top: 12px; box-shadow:0 3px 8px rgba(23,32,51,.14); }
+  button:hover { opacity: 0.85; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .order { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 12px; font-size: 14px; background:#fff; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .tag.auto { background: #e6f4ea; color: var(--accent); }
+  .tag.pending { background: #fef3e2; color: var(--warn); }
+  .tag.escalate { background: #fde8e8; color: var(--danger); }
+  .tag.confirmed { background: #e0edff; color: #1d4ed8; }
+  .audit-entry { font-size: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-family: ui-monospace, monospace; }
+  .audit-entry .ts { color: var(--muted); }
+  .actions button { margin-right: 8px; margin-top: 8px; font-size: 12.5px; padding: 6px 10px; }
+  .status-banner { font-size: 12.5px; padding: 10px 14px; border-radius: 9px; margin-bottom: 16px; font-weight:600; }
+  .status-banner.mock { background: #fef3e2; color: var(--warn); }
+  .status-banner.live { background: #e6f4ea; color: var(--accent); }
+  .workflow { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; }
+  .step { border:1px solid var(--line); border-radius:5px; padding:5px 7px; font-size:11px; color:var(--muted); }
+  .step.done { background:#e6f4ea; color:var(--accent); border-color:#b7dfc1; }
+  .step.wait { background:#fef3e2; color:var(--warn); border-color:#f4d19b; }
+  .rules { background:#fafafa; border-radius:6px; padding:8px 10px; font-size:11px; color:var(--muted); margin-top:8px; }
+  .section-title { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .section-title strong { font-size:16px; }
+  .live-dot { color:var(--accent); font-size:11px; font-weight:700; }
+  .error { color:var(--danger); background:#fff1f2; padding:9px 12px; border-radius:8px; margin-top:10px; font-size:12px; }
+</style>
+</head>
+<body>
+  <h1>🎂 Cakebot Agent — Buildathon Demo</h1>
+  <div class="sub">One merchant, one workflow: order intake → quote → gated payment link → completed-run fee. Pay-per-run, no subscription.</div>
+  <div id="statusBanner" class="status-banner"></div>
+
+  <div class="card">
+    <div class="section-title"><strong>Test the agent</strong><span class="live-dot">● AGENT ONLINE</span></div>
+    <div class="sub" style="margin:4px 0 12px;">Send a natural-language order. Cakebot will decide whether to act or ask for your approval.</div>
+    <label>Customer name</label>
+    <input id="customerName" value="Priya" />
+    <label>Message (try: "2kg chocolate cake for 2026-09-20" or the taken date 2026-09-15 to see escalation)</label>
+    <textarea id="message">I'd like a 2kg chocolate cake for 2026-09-20</textarea>
+    <button onclick="submitOrder()">Send to agent</button>
+  </div>
+
+  <div class="card">
+    <div class="section-title"><strong>Agent-managed orders</strong><span class="live-dot">● LIVE ACTIVITY</span></div>
+    <div class="sub" style="margin:6px 0 12px;">The agent acts automatically inside its limits and pauses only when a rule requires human judgment.</div>
+    <div id="orders"></div>
+  </div>
+
+  <div class="card">
+    <strong>Audit trail</strong>
+    <div id="audit"></div>
+  </div>
+
+<script>
+const api = async (path, opts) => {
+  const response = await fetch(path, opts);
+  const text = await response.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = { error: text || `Request failed (${response.status})` }; }
+  if (!response.ok) data.error = data.error || `Request failed (${response.status})`;
+  return data;
+};
+
+async function loadStatus() {
+  const s = await api('/api/status');
+  const el = document.getElementById('statusBanner');
+  el.className = 'status-banner ' + (s.razorpayMode === 'mock' ? 'mock' : 'live');
+  el.textContent = s.razorpayMode === 'mock'
+    ? '⚠ Running in MOCK mode — no real Razorpay calls. Add test-mode keys to .env to go live.'
+    : '✓ Connected to Razorpay test mode.';
+}
+
+async function submitOrder() {
+  const customerName = document.getElementById('customerName').value;
+  const message = document.getElementById('message').value;
+  await api('/api/order', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ customerName, message })
+  });
+  refresh();
+}
+
+async function sendLink(id) {
+  const result = await api(`/api/order/${id}/send-payment-link`, { method: 'POST' });
+  if (result.error) return showError(result.error);
+  refresh();
+}
+
+async function markPaid(id) {
+  await api(`/api/order/${id}/mark-paid`, { method: 'POST' });
+  refresh();
+}
+
+async function approveOrder(id) {
+  const result = await api(`/api/order/${id}/approve`, { method: 'POST' });
+  if (result.error) return showError(result.error);
+  refresh();
+}
+
+function showError(message) {
+  let el = document.getElementById('error');
+  if (!el) { el = document.createElement('div'); el.id = 'error'; el.className = 'error'; document.querySelector('.card').prepend(el); }
+  el.textContent = 'Action failed: ' + message;
+  setTimeout(() => el.remove(), 5000);
+}
+
+function tagFor(order) {
+  if (order.status === 'escalated') return '<span class="tag escalate">ESCALATED</span>';
+  if (order.status === 'confirmed') return `<span class="tag confirmed">CONFIRMED + ${order.feeMode === 'simulated' ? 'FEE SIMULATED' : 'FEE ORDER CREATED'}</span>`;
+  if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return '<span class="tag pending">NEEDS BAKER APPROVAL</span>';
+  return '<span class="tag auto">AUTO-APPROVED</span>';
+}
+
+function workflowFor(order, audit) {
+  const events = audit.filter(a => a.orderId === order.id);
+  const has = action => events.some(a => a.action === action);
+  const steps = [
+    ['UNDERSTAND', 'Understood request', has('AUTO_APPROVED') || has('PENDING_APPROVAL') || has('ESCALATE')],
+    ['CHECK', 'Checked availability', has('AUTO_APPROVED') || has('PENDING_APPROVAL')],
+    ['DECIDE', order.decision === 'AUTO_APPROVED' ? 'Auto-approved' : order.decision === 'PENDING_APPROVAL' ? 'Approval required' : 'Escalated', true],
+    ['PAY', order.status === 'awaiting_payment' || order.status === 'confirmed' ? 'Payment link sent' : 'Payment paused', order.status === 'awaiting_payment' || order.status === 'confirmed'],
+    ['DONE', order.status === 'confirmed' ? 'Order completed' : 'Waiting for payment', order.status === 'confirmed']
+  ];
+  return `<div class="workflow">${steps.map(s => `<span class="step ${s[2] ? (s[0] === 'DECIDE' && order.decision !== 'AUTO_APPROVED' ? 'wait' : 'done') : ''}">${s[1]}</span>`).join('')}</div>`;
+}
+
+async function refresh() {
+  const orders = await api('/api/orders');
+  const audit = await api('/api/audit');
+  document.getElementById('orders').innerHTML = orders.map(o => `
+    <div class="order">
+      <div>${tagFor(o)} <strong>${o.customerName}</strong> — "${o.message}"</div>
+      <div style="color:#6b6b6b;margin-top:4px;">${o.reasoning}</div>
+      ${workflowFor(o, audit)}
+      <div class="rules">Guardrails: AI confidence required · existing dates checked · auto-approval limit ₹5,000 · human approval for high-risk orders</div>
+      ${o.amount ? `<div>Quote: ₹${o.amount}${o.perRunFeeCharged ? ` · Agent fee charged: ₹${o.perRunFeeCharged}` : ''}</div>` : ''}
+      ${o.paymentLink ? `<div>Payment link: <a href="${o.paymentLink}" target="_blank">${o.paymentLink}</a></div>` : ''}
+      <div class="actions">
+        ${o.decision === 'PENDING_APPROVAL' && !o.approvedByBaker ? `<button onclick="approveOrder('${o.id}')">Approve quote</button>` : ''}
+        ${o.status === 'quoted' && (o.decision !== 'PENDING_APPROVAL' || o.approvedByBaker) ? `<button onclick="sendLink('${o.id}')">Send payment link</button>` : ''}
+        ${o.status === 'awaiting_payment' ? `<button onclick="markPaid('${o.id}')">Simulate customer payment</button>` : ''}
+      </div>
+    </div>
+  `).join('') || '<div style="color:#6b6b6b;">No orders yet.</div>';
+
+  document.getElementById('audit').innerHTML = audit.map(a => `
+    <div class="audit-entry">
+      <span class="ts">${new Date(a.timestamp).toLocaleTimeString()}</span> —
+      <strong>${a.action}</strong> ${a.orderId ? `(order ${a.orderId})` : ''}
+      ${a.amount ? ` — ₹${a.amount}` : ''}<br/>${a.reasoning || ''}
+    </div>
+  `).join('') || '<div style="color:#6b6b6b;">No activity yet.</div>';
+}
+
+loadStatus();
+refresh();
+setInterval(refresh, 4000);
+</script>
+</body>
+</html>
