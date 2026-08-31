@@ -1,176 +1,728 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Cakebot Agent — Demo</title>
-<style>
-  :root { --ink:#172033; --muted:#718096; --line:#e6eaf0; --accent:#16835b; --warn:#c46a16; --danger:#c03945; --bg:#f5f7fb; --purple:#6558d3; }
-  * { box-sizing: border-box; }
-  body { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 1120px; margin: 0 auto; padding: 32px 28px 70px; color: var(--ink); background:var(--bg); }
-  h1 { font-size: 28px; letter-spacing:-.7px; margin:0 0 6px; }
-  .sub { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
-  .card { background:white; border: 1px solid var(--line); box-shadow:0 8px 24px rgba(35,48,75,.05); border-radius:16px; padding: 22px; margin-bottom: 18px; }
-  body > h1:before { content:'CAKEBOT  /  MERCHANT CONSOLE'; display:block; color:var(--purple); font-size:11px; letter-spacing:1.5px; font-weight:800; margin-bottom:10px; }
-  .topbar { display:flex; justify-content:space-between; align-items:flex-start; }
-  textarea, input { width: 100%; padding: 12px 13px; border: 1px solid var(--line); border-radius: 9px; font-family: inherit; font-size: 14px; background:#fbfcfe; }
-  textarea { min-height: 60px; resize: vertical; }
-  label { font-size: 12px; color: var(--muted); display: block; margin: 10px 0 4px; }
-  button { background: var(--ink); color: white; border: none; padding: 10px 16px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight:700; margin-top: 12px; box-shadow:0 3px 8px rgba(23,32,51,.14); }
-  button:hover { opacity: 0.85; }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .order { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 12px; font-size: 14px; background:#fff; }
-  .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-  .tag.auto { background: #e6f4ea; color: var(--accent); }
-  .tag.pending { background: #fef3e2; color: var(--warn); }
-  .tag.escalate { background: #fde8e8; color: var(--danger); }
-  .tag.confirmed { background: #e0edff; color: #1d4ed8; }
-  .audit-entry { font-size: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-family: ui-monospace, monospace; }
-  .audit-entry .ts { color: var(--muted); }
-  .actions button { margin-right: 8px; margin-top: 8px; font-size: 12.5px; padding: 6px 10px; }
-  .status-banner { font-size: 12.5px; padding: 10px 14px; border-radius: 9px; margin-bottom: 16px; font-weight:600; }
-  .status-banner.mock { background: #fef3e2; color: var(--warn); }
-  .status-banner.live { background: #e6f4ea; color: var(--accent); }
-  .workflow { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; }
-  .step { border:1px solid var(--line); border-radius:5px; padding:5px 7px; font-size:11px; color:var(--muted); }
-  .step.done { background:#e6f4ea; color:var(--accent); border-color:#b7dfc1; }
-  .step.wait { background:#fef3e2; color:var(--warn); border-color:#f4d19b; }
-  .rules { background:#fafafa; border-radius:6px; padding:8px 10px; font-size:11px; color:var(--muted); margin-top:8px; }
-  .section-title { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
-  .section-title strong { font-size:16px; }
-  .live-dot { color:var(--accent); font-size:11px; font-weight:700; }
-  .error { color:var(--danger); background:#fff1f2; padding:9px 12px; border-radius:8px; margin-top:10px; font-size:12px; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Cakebot — an AI commerce employee for small food businesses." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23e97860'/%3E%3Cpath d='M7 15h18v9H7zM6 11h20v4H6zM12 11c-2.2 0-3-1.3-3-2.5S10.1 6 11.5 6c1.7 0 2.5 2 4.5 5 2-3 2.8-5 4.5-5C21.9 6 23 7.3 23 8.5S22.2 11 20 11' fill='none' stroke='white' stroke-width='1.7'/%3E%3C/svg%3E" />
+  <title>Cakebot — AI commerce employee</title>
+  <style>
+    :root {
+      --ink: #10233f;
+      --ink-soft: #30435d;
+      --muted: #728198;
+      --muted-light: #9aa7b8;
+      --line: #e5eaf0;
+      --line-strong: #d7e0e9;
+      --bg: #f7f9fc;
+      --surface: #ffffff;
+      --surface-soft: #f5f8fb;
+      --blue: #1769e0;
+      --blue-dark: #0f55bf;
+      --blue-soft: #eaf2ff;
+      --coral: #e97860;
+      --coral-soft: #fff0eb;
+      --green: #16845d;
+      --green-soft: #eaf8f1;
+      --amber: #a96316;
+      --amber-soft: #fff6e7;
+      --red: #c44d55;
+      --red-soft: #fff0f1;
+      --shadow: 0 14px 42px rgba(25, 45, 75, .06);
+      --shadow-soft: 0 6px 18px rgba(25, 45, 75, .05);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    :focus-visible { outline: 3px solid rgba(23, 105, 224, .3); outline-offset: 2px; }
+
+    .shell { width: min(1240px, calc(100% - 48px)); margin: 0 auto; }
+    .topbar {
+      height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); }
+    .brand:hover { text-decoration: none; }
+    .brand-mark {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      color: #fff;
+      background: var(--coral);
+      border-radius: 11px;
+      box-shadow: 0 5px 13px rgba(233, 120, 96, .22);
+    }
+    .brand-mark svg { width: 21px; height: 21px; }
+    .brand-name { display: block; font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+    .brand-subtitle { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .nav { display: flex; align-items: center; gap: 25px; margin-left: auto; }
+    .nav a { color: var(--muted); font-size: 12px; font-weight: 650; transition: color 180ms ease; }
+    .nav a:hover { color: var(--ink); text-decoration: none; }
+    .topbar-right { display: flex; align-items: center; gap: 11px; }
+    .online, .mode-badge, .merchant {
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .online { gap: 6px; color: var(--green); }
+    .online::before { content: ""; width: 7px; height: 7px; background: #2cb47d; border-radius: 50%; box-shadow: 0 0 0 4px rgba(44, 180, 125, .12); }
+    .mode-badge { padding: 7px 10px; color: var(--amber); background: var(--amber-soft); }
+    .merchant { gap: 8px; color: var(--ink-soft); }
+    .avatar { display: grid; width: 30px; height: 30px; place-items: center; color: #fff; background: var(--ink); border-radius: 50%; font-size: 11px; }
+
+    .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 36px; padding: 74px 0 49px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 19px; color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    .eyebrow::before { content: ""; width: 20px; height: 1px; background: var(--blue); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 650px; margin-bottom: 18px; font-size: clamp(38px, 5vw, 64px); line-height: .99; letter-spacing: -.06em; font-weight: 780; }
+    .hero-copy { max-width: 570px; margin-bottom: 27px; color: var(--muted); font-size: 17px; line-height: 1.6; }
+    .hero-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .hero-note { align-self: flex-end; max-width: 220px; margin: 0 0 3px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .hero-note strong { display: block; color: var(--ink-soft); font-size: 13px; margin-bottom: 4px; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      gap: 7px;
+      padding: 0 15px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      color: #fff;
+      background: var(--ink);
+      box-shadow: 0 5px 12px rgba(16, 35, 63, .12);
+      font-size: 12px;
+      font-weight: 750;
+      transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+    }
+    .button:hover:not(:disabled) { background: #1c3556; box-shadow: 0 8px 17px rgba(16, 35, 63, .16); transform: translateY(-1px); }
+    .button.primary { background: var(--blue); }
+    .button.primary:hover:not(:disabled) { background: var(--blue-dark); }
+    .button.secondary { color: var(--ink); background: var(--surface); border-color: var(--line-strong); box-shadow: none; }
+    .button.secondary:hover:not(:disabled) { background: var(--surface-soft); }
+    .button.ghost { min-height: 34px; padding: 0 11px; color: var(--ink-soft); background: transparent; border-color: var(--line); box-shadow: none; }
+    .button.ghost:hover:not(:disabled) { background: var(--surface-soft); }
+    .button.success { background: var(--green); }
+    .button.warn { color: var(--amber); background: var(--amber-soft); border-color: #f1d49e; box-shadow: none; }
+    .button.danger { color: var(--red); background: var(--red-soft); border-color: #f1c6ca; box-shadow: none; }
+
+    .status-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 12px; }
+    .status-banner.live { color: var(--green); background: var(--green-soft); border-color: #ccebdd; }
+    .status-banner.mock { color: var(--amber); background: var(--amber-soft); border-color: #f2dfb8; }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; margin: 0 0 30px; }
+    .metric { min-height: 122px; padding: 19px; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: var(--shadow-soft); }
+    .metric-label { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 11px; font-weight: 650; }
+    .metric-icon { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 8px; color: var(--blue); background: var(--blue-soft); }
+    .metric-icon svg { width: 14px; height: 14px; }
+    .metric:nth-child(2) .metric-icon { color: var(--coral); background: var(--coral-soft); }
+    .metric:nth-child(3) .metric-icon { color: var(--green); background: var(--green-soft); }
+    .metric:nth-child(4) .metric-icon { color: var(--amber); background: var(--amber-soft); }
+    .metric-value { margin-top: 18px; font-size: 24px; letter-spacing: -.04em; font-weight: 780; }
+    .metric-value small { color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+
+    .section { scroll-margin-top: 90px; margin-top: 30px; }
+    .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
+    .section-heading h2 { margin-bottom: 5px; font-size: 22px; letter-spacing: -.04em; }
+    .section-heading p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .section-kicker { color: var(--muted-light); font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(290px, .8fr); gap: 16px; align-items: start; }
+    .composer-card { overflow: hidden; }
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; padding: 22px 23px 15px; }
+    .card-header h3 { margin-bottom: 4px; font-size: 16px; letter-spacing: -.025em; }
+    .card-header p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .card-body { padding: 0 23px 23px; }
+    label { display: block; margin: 15px 0 6px; color: var(--muted); font-size: 11px; font-weight: 700; }
+    input, textarea { width: 100%; color: var(--ink); background: #fbfcfe; border: 1px solid var(--line-strong); border-radius: 10px; padding: 11px 12px; transition: border-color 180ms ease, box-shadow 180ms ease; }
+    input:focus, textarea:focus { border-color: #8cb5f5; box-shadow: 0 0 0 3px rgba(23, 105, 224, .09); outline: none; }
+    textarea { min-height: 108px; resize: vertical; line-height: 1.5; }
+    .examples { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .chip { padding: 7px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-soft); background: var(--surface); font-size: 11px; transition: background 150ms ease, border-color 150ms ease; }
+    .chip:hover { border-color: #b8cdef; background: var(--blue-soft); }
+    .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 14px; }
+    .helper { color: var(--muted-light); font-size: 11px; line-height: 1.4; }
+    .composer-footer .button { margin-left: auto; }
+    .conversation { margin: 20px -23px -23px; padding: 18px 23px; background: var(--surface-soft); border-top: 1px solid var(--line); }
+    .conversation-label { color: var(--muted-light); font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+    .bubble { max-width: 85%; margin-top: 9px; padding: 11px 13px; border-radius: 12px; font-size: 12px; line-height: 1.5; }
+    .bubble.customer { margin-left: auto; color: #fff; background: var(--ink); border-bottom-right-radius: 4px; }
+    .bubble.bot { color: var(--ink-soft); background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+    .conversation.empty { color: var(--muted); font-size: 12px; }
+
+    .agent-panel { padding: 22px; }
+    .agent-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .agent-heading h3 { margin: 0; font-size: 16px; letter-spacing: -.025em; }
+    .online-label { color: var(--green); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .guardrails { display: grid; gap: 10px; }
+    .guardrail { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .guardrail:last-child { padding-bottom: 0; border-bottom: 0; }
+    .guardrail span:first-child { color: var(--muted); font-size: 11px; }
+    .guardrail strong { color: var(--ink-soft); font-size: 11px; text-align: right; }
+    .flow-title { margin: 25px 0 10px; color: var(--muted-light); font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+    .flow { display: flex; align-items: center; gap: 5px; }
+    .flow-step { display: flex; align-items: center; gap: 5px; color: var(--muted-light); font-size: 10px; font-weight: 700; }
+    .flow-step::before { content: ""; display: block; width: 7px; height: 7px; border: 2px solid var(--line-strong); border-radius: 50%; }
+    .flow-step.done { color: var(--green); }
+    .flow-step.done::before { border-color: var(--green); background: var(--green); }
+    .flow-step.active { color: var(--blue); }
+    .flow-step.active::before { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+    .flow-arrow { color: var(--line-strong); }
+    .processing { margin-top: 20px; padding: 12px; border-radius: 11px; background: var(--blue-soft); color: var(--blue); font-size: 11px; }
+    .processing strong { display: block; margin-bottom: 8px; font-size: 12px; }
+    .processing-list { display: grid; gap: 5px; }
+    .processing-step { display: flex; align-items: center; gap: 7px; color: #6c8abd; }
+    .processing-step::before { content: ""; width: 7px; height: 7px; border: 1px solid currentColor; border-radius: 50%; }
+    .processing-step.done { color: var(--green); }
+    .processing-step.done::before { border-color: currentColor; background: currentColor; }
+    .processing-step.active { color: var(--blue); font-weight: 750; }
+    .processing-step.active::before { background: currentColor; box-shadow: 0 0 0 3px rgba(23, 105, 224, .14); }
+
+    .orders-list { display: grid; gap: 13px; }
+    .order-card { padding: 20px; }
+    .order-top { display: flex; justify-content: space-between; gap: 18px; }
+    .order-customer { display: flex; gap: 11px; min-width: 0; }
+    .customer-avatar { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; color: var(--blue); background: var(--blue-soft); border-radius: 11px; font-size: 12px; font-weight: 800; }
+    .order-customer h3 { margin: 1px 0 3px; font-size: 14px; letter-spacing: -.02em; }
+    .order-message { overflow: hidden; max-width: 600px; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .status-tag { display: inline-flex; align-items: center; flex: 0 0 auto; height: 24px; padding: 0 9px; border-radius: 999px; font-size: 10px; font-weight: 800; }
+    .status-tag.success { color: var(--green); background: var(--green-soft); }
+    .status-tag.pending { color: var(--amber); background: var(--amber-soft); }
+    .status-tag.info { color: var(--blue); background: var(--blue-soft); }
+    .status-tag.blocked, .status-tag.rejected { color: var(--red); background: var(--red-soft); }
+    .order-summary { display: flex; gap: 24px; flex-wrap: wrap; margin: 18px 0; padding: 13px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .summary-item span { display: block; margin-bottom: 5px; color: var(--muted-light); font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; }
+    .summary-item strong { color: var(--ink-soft); font-size: 12px; font-weight: 700; }
+    .summary-item.amount { margin-left: auto; text-align: right; }
+    .summary-item.amount strong { color: var(--ink); font-size: 18px; letter-spacing: -.03em; }
+    .timeline { display: grid; grid-template-columns: repeat(9, minmax(70px, 1fr)); gap: 5px; margin: 5px 0 18px; }
+    .timeline-step { position: relative; min-height: 45px; color: var(--muted-light); font-size: 9px; line-height: 1.25; }
+    .timeline-step:not(:last-child)::after { content: ""; position: absolute; top: 6px; left: 14px; width: calc(100% - 10px); height: 1px; background: var(--line); }
+    .timeline-dot { position: relative; z-index: 1; display: block; width: 13px; height: 13px; margin-bottom: 7px; border: 2px solid var(--line-strong); border-radius: 50%; background: var(--surface); }
+    .timeline-step.done { color: var(--green); }
+    .timeline-step.done .timeline-dot { border-color: var(--green); background: var(--green); }
+    .timeline-step.done:not(:last-child)::after { background: #addfc7; }
+    .timeline-step.active { color: var(--blue); font-weight: 750; }
+    .timeline-step.active .timeline-dot { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
+    .timeline-step.wait { color: var(--amber); font-weight: 750; }
+    .timeline-step.wait .timeline-dot { border-color: var(--amber); background: var(--amber-soft); }
+    .timeline-step.blocked { color: var(--red); }
+    .timeline-step.blocked .timeline-dot { border-color: var(--red); background: var(--red-soft); }
+    .decision-panel { padding: 12px 13px; border-radius: 11px; background: var(--surface-soft); color: var(--ink-soft); font-size: 11px; line-height: 1.5; }
+    .decision-panel strong { display: block; margin-bottom: 3px; color: var(--ink); font-size: 11px; }
+    .decision-panel.warn { background: var(--amber-soft); color: #805116; }
+    .decision-panel.blocked { background: var(--red-soft); color: #89464b; }
+    .decision-panel.success { background: var(--green-soft); color: #286c50; }
+    .order-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 13px; }
+    .payment-box { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 13px; padding: 13px; border: 1px solid #cadcff; border-radius: 11px; background: #f5f8ff; }
+    .payment-box-title { color: var(--blue); font-size: 11px; font-weight: 800; }
+    .payment-box-meta { margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .payment-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .demo-label { display: block; margin-bottom: 4px; color: var(--amber); font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+    .error-inline { margin-top: 10px; padding: 10px 12px; border-radius: 9px; color: var(--red); background: var(--red-soft); font-size: 11px; }
+
+    .lower-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    .wallet-card { padding: 22px; overflow: hidden; background: var(--ink); color: #fff; border: 0; }
+    .wallet-top { display: flex; justify-content: space-between; gap: 20px; }
+    .wallet-label { color: #a8b9d0; font-size: 11px; font-weight: 700; }
+    .wallet-balance { margin: 12px 0 4px; font-size: 33px; letter-spacing: -.055em; font-weight: 760; }
+    .wallet-balance small { color: #9aacc3; font-size: 12px; font-weight: 500; letter-spacing: 0; }
+    .wallet-status { color: #a8b9d0; font-size: 11px; }
+    .wallet-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 20px; }
+    .wallet-card .button.secondary { color: #fff; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.16); }
+    .wallet-card .button.secondary:hover:not(:disabled) { background: rgba(255,255,255,.14); }
+    .wallet-rules { display: grid; gap: 8px; margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.13); }
+    .wallet-rule { display: flex; align-items: center; gap: 8px; color: #bdcbe0; font-size: 10px; }
+    .wallet-rule::before { content: "✓"; display: grid; width: 15px; height: 15px; place-items: center; color: #78dbb1; background: rgba(120, 219, 177, .13); border-radius: 50%; font-size: 9px; }
+    .wallet-warning { margin-top: 14px; padding: 9px 10px; color: #ffe0a3; background: rgba(255, 194, 86, .12); border-radius: 8px; font-size: 10px; line-height: 1.4; }
+    .activity-card { padding: 22px; }
+    .activity-list { display: grid; gap: 0; }
+    .activity-item { position: relative; display: grid; grid-template-columns: 25px 1fr auto; gap: 10px; padding: 0 0 17px; }
+    .activity-item:not(:last-child)::before { content: ""; position: absolute; left: 7px; top: 15px; bottom: 0; width: 1px; background: var(--line); }
+    .activity-icon { position: relative; z-index: 1; display: grid; width: 15px; height: 15px; place-items: center; color: var(--blue); background: var(--blue-soft); border-radius: 50%; font-size: 8px; }
+    .activity-icon.success { color: var(--green); background: var(--green-soft); }
+    .activity-icon.warn { color: var(--amber); background: var(--amber-soft); }
+    .activity-icon.danger { color: var(--red); background: var(--red-soft); }
+    .activity-title { color: var(--ink-soft); font-size: 11px; font-weight: 750; }
+    .activity-detail { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+    .activity-time { color: var(--muted-light); font-size: 9px; white-space: nowrap; }
+    .activity-amount { margin-top: 4px; color: var(--green); font-size: 10px; font-weight: 700; }
+    .preview-card { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: center; padding: 22px; }
+    .preview-copy h3 { margin-bottom: 5px; font-size: 16px; letter-spacing: -.025em; }
+    .preview-copy p { margin-bottom: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .preview-stage { min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 1px dashed #cbd5e1; border-radius: 13px; background: var(--surface-soft); color: var(--muted); text-align: center; }
+    .preview-stage svg { color: var(--coral); }
+    .preview-stage strong { color: var(--ink-soft); font-size: 11px; }
+    .preview-stage span { max-width: 190px; font-size: 10px; line-height: 1.4; }
+    .preview-form { margin-top: 15px; }
+    .preview-form input { font-size: 11px; }
+    .footer { padding: 46px 0 60px; color: var(--muted-light); font-size: 10px; text-align: center; }
+    .empty-state { padding: 33px 20px; border: 1px dashed var(--line-strong); border-radius: 13px; color: var(--muted); text-align: center; }
+    .empty-state strong { display: block; margin-bottom: 5px; color: var(--ink-soft); font-size: 13px; }
+    .empty-state span { font-size: 11px; }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 10; max-width: 340px; padding: 12px 15px; color: #fff; background: var(--ink); border-radius: 11px; box-shadow: 0 12px 30px rgba(16,35,63,.2); font-size: 12px; opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity 180ms ease, transform 180ms ease; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.error { background: var(--red); }
+
+    @media (max-width: 980px) {
+      .nav { gap: 14px; }
+      .merchant-name { display: none; }
+      .workspace { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 700px) {
+      .shell { width: min(100% - 28px, 560px); }
+      .topbar { height: auto; min-height: 70px; padding: 12px 0; flex-wrap: wrap; }
+      .nav { order: 3; width: 100%; justify-content: space-between; overflow-x: auto; padding-bottom: 2px; }
+      .topbar-right { margin-left: auto; }
+      .mode-badge { display: none; }
+      .hero { display: block; padding: 48px 0 34px; }
+      h1 { font-size: 44px; }
+      .hero-copy { font-size: 15px; }
+      .hero-note { max-width: none; margin-top: 22px; }
+      .metrics { gap: 9px; }
+      .metric { min-height: 105px; padding: 14px; }
+      .metric-value { margin-top: 14px; font-size: 20px; }
+      .card-header, .card-body, .agent-panel, .order-card, .wallet-card, .activity-card, .preview-card { padding-left: 16px; padding-right: 16px; }
+      .conversation { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+      .composer-footer { align-items: stretch; flex-direction: column; }
+      .composer-footer .button { width: 100%; margin-left: 0; }
+      .section-heading { display: block; }
+      .section-kicker { display: block; margin-top: 10px; }
+      .order-top { display: block; }
+      .order-top .status-tag { margin: 13px 0 0 45px; }
+      .order-summary { gap: 13px; }
+      .summary-item.amount { margin-left: 0; text-align: left; }
+      .timeline { grid-template-columns: 1fr; gap: 0; margin-top: 15px; }
+      .timeline-step { display: flex; align-items: center; gap: 9px; min-height: 28px; font-size: 10px; }
+      .timeline-step:not(:last-child)::after { top: 18px; left: 6px; width: 1px; height: calc(100% - 9px); }
+      .timeline-dot { flex: 0 0 13px; margin: 0; }
+      .payment-box { align-items: flex-start; flex-direction: column; }
+      .payment-actions { width: 100%; }
+      .payment-actions .button { flex: 1; }
+      .lower-grid, .preview-card { grid-template-columns: 1fr; }
+      .preview-stage { min-height: 120px; }
+    }
+  </style>
 </head>
 <body>
-  <h1>🎂 Cakebot Agent — Buildathon Demo</h1>
-  <div class="sub">One merchant, one workflow: order intake → quote → gated payment link → completed-run fee. Pay-per-run, no subscription.</div>
-  <div id="statusBanner" class="status-banner"></div>
+  <header class="topbar shell">
+    <a class="brand" href="#">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 11.5h16v7.25A1.25 1.25 0 0 1 18.75 20H5.25A1.25 1.25 0 0 1 4 18.75V11.5Z"/><path d="M3 8.75h18v2.75H3zM8 8.75c-1.8 0-2.5-1.06-2.5-2.04 0-1.1.93-1.96 2.04-1.96C9.3 4.75 10 6.35 12 8.75c2-2.4 2.7-4 4.46-4 1.11 0 2.04.86 2.04 1.96 0 .98-.7 2.04-2.5 2.04"/><path d="M12 11.5V20"/></svg>
+      </span>
+      <span><span class="brand-name">Cakebot</span><span class="brand-subtitle">AI commerce employee</span></span>
+    </a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="#overview">Overview</a>
+      <a href="#orders-section">Orders</a>
+      <a href="#activity-section">Agent activity</a>
+      <a href="#wallet-section">Wallet</a>
+    </nav>
+    <div class="topbar-right">
+      <span class="online">Agent online</span>
+      <span id="modeBadge" class="mode-badge">Razorpay test mode</span>
+      <span class="merchant"><span class="avatar">PB</span><span class="merchant-name">Priya's Bakery</span></span>
+    </div>
+  </header>
 
-  <div class="card">
-    <div class="section-title"><strong>Test the agent</strong><span class="live-dot">● AGENT ONLINE</span></div>
-    <div class="sub" style="margin:4px 0 12px;">Send a natural-language order. Cakebot will decide whether to act or ask for your approval.</div>
-    <label>Customer name</label>
-    <input id="customerName" value="Priya" />
-    <label>Message (try: "2kg chocolate cake for 2026-09-20" or the taken date 2026-09-15 to see escalation)</label>
-    <textarea id="message">I'd like a 2kg chocolate cake for 2026-09-20</textarea>
-    <button onclick="submitOrder()">Send to agent</button>
-  </div>
-
-  <div class="card">
-    <div class="section-title"><strong>Agent-managed orders</strong><span class="live-dot">● LIVE ACTIVITY</span></div>
-    <div class="sub" style="margin:6px 0 12px;">The agent acts automatically inside its limits and pauses only when a rule requires human judgment.</div>
-    <div id="orders"></div>
-  </div>
-
-  <div class="card">
-    <strong>Audit trail</strong>
-    <div id="audit"></div>
-  </div>
-
-<script>
-const api = async (path, opts) => {
-  const response = await fetch(path, opts);
-  const text = await response.text();
-  let data;
-  try { data = JSON.parse(text); } catch { data = { error: text || `Request failed (${response.status})` }; }
-  if (!response.ok) data.error = data.error || `Request failed (${response.status})`;
-  return data;
-};
-
-async function loadStatus() {
-  const s = await api('/api/status');
-  const el = document.getElementById('statusBanner');
-  el.className = 'status-banner ' + (s.razorpayMode === 'mock' ? 'mock' : 'live');
-  el.textContent = s.razorpayMode === 'mock'
-    ? '⚠ Running in MOCK mode — no real Razorpay calls. Add test-mode keys to .env to go live.'
-    : '✓ Connected to Razorpay test mode.';
-}
-
-async function submitOrder() {
-  const customerName = document.getElementById('customerName').value;
-  const message = document.getElementById('message').value;
-  await api('/api/order', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ customerName, message })
-  });
-  refresh();
-}
-
-async function sendLink(id) {
-  const result = await api(`/api/order/${id}/send-payment-link`, { method: 'POST' });
-  if (result.error) return showError(result.error);
-  refresh();
-}
-
-async function markPaid(id) {
-  await api(`/api/order/${id}/mark-paid`, { method: 'POST' });
-  refresh();
-}
-
-async function approveOrder(id) {
-  const result = await api(`/api/order/${id}/approve`, { method: 'POST' });
-  if (result.error) return showError(result.error);
-  refresh();
-}
-
-function showError(message) {
-  let el = document.getElementById('error');
-  if (!el) { el = document.createElement('div'); el.id = 'error'; el.className = 'error'; document.querySelector('.card').prepend(el); }
-  el.textContent = 'Action failed: ' + message;
-  setTimeout(() => el.remove(), 5000);
-}
-
-function tagFor(order) {
-  if (order.status === 'escalated') return '<span class="tag escalate">ESCALATED</span>';
-  if (order.status === 'confirmed') return `<span class="tag confirmed">CONFIRMED + ${order.feeMode === 'simulated' ? 'FEE SIMULATED' : 'FEE ORDER CREATED'}</span>`;
-  if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return '<span class="tag pending">NEEDS BAKER APPROVAL</span>';
-  return '<span class="tag auto">AUTO-APPROVED</span>';
-}
-
-function workflowFor(order, audit) {
-  const events = audit.filter(a => a.orderId === order.id);
-  const has = action => events.some(a => a.action === action);
-  const steps = [
-    ['UNDERSTAND', 'Understood request', has('AUTO_APPROVED') || has('PENDING_APPROVAL') || has('ESCALATE')],
-    ['CHECK', 'Checked availability', has('AUTO_APPROVED') || has('PENDING_APPROVAL')],
-    ['DECIDE', order.decision === 'AUTO_APPROVED' ? 'Auto-approved' : order.decision === 'PENDING_APPROVAL' ? 'Approval required' : 'Escalated', true],
-    ['PAY', order.status === 'awaiting_payment' || order.status === 'confirmed' ? 'Payment link sent' : 'Payment paused', order.status === 'awaiting_payment' || order.status === 'confirmed'],
-    ['DONE', order.status === 'confirmed' ? 'Order completed' : 'Waiting for payment', order.status === 'confirmed']
-  ];
-  return `<div class="workflow">${steps.map(s => `<span class="step ${s[2] ? (s[0] === 'DECIDE' && order.decision !== 'AUTO_APPROVED' ? 'wait' : 'done') : ''}">${s[1]}</span>`).join('')}</div>`;
-}
-
-async function refresh() {
-  const orders = await api('/api/orders');
-  const audit = await api('/api/audit');
-  document.getElementById('orders').innerHTML = orders.map(o => `
-    <div class="order">
-      <div>${tagFor(o)} <strong>${o.customerName}</strong> — "${o.message}"</div>
-      <div style="color:#6b6b6b;margin-top:4px;">${o.reasoning}</div>
-      ${workflowFor(o, audit)}
-      <div class="rules">Guardrails: AI confidence required · existing dates checked · auto-approval limit ₹5,000 · human approval for high-risk orders</div>
-      ${o.amount ? `<div>Quote: ₹${o.amount}${o.perRunFeeCharged ? ` · Agent fee charged: ₹${o.perRunFeeCharged}` : ''}</div>` : ''}
-      ${o.paymentLink ? `<div>Payment link: <a href="${o.paymentLink}" target="_blank">${o.paymentLink}</a></div>` : ''}
-      <div class="actions">
-        ${o.decision === 'PENDING_APPROVAL' && !o.approvedByBaker ? `<button onclick="approveOrder('${o.id}')">Approve quote</button>` : ''}
-        ${o.status === 'quoted' && (o.decision !== 'PENDING_APPROVAL' || o.approvedByBaker) ? `<button onclick="sendLink('${o.id}')">Send payment link</button>` : ''}
-        ${o.status === 'awaiting_payment' ? `<button onclick="markPaid('${o.id}')">Simulate customer payment</button>` : ''}
+  <main class="shell">
+    <section id="overview" class="hero">
+      <div>
+        <p class="eyebrow">Merchant operating system</p>
+        <h1>Your AI employee for every order.</h1>
+        <p class="hero-copy">Cakebot turns customer conversations into completed, paid orders—while knowing when to act and when to ask for help.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#simulator">Test the agent <span aria-hidden="true">↗</span></a>
+          <a class="button secondary" href="#wallet-section">View wallet</a>
+        </div>
       </div>
-    </div>
-  `).join('') || '<div style="color:#6b6b6b;">No orders yet.</div>';
+      <p class="hero-note"><strong>No monthly subscription.</strong>Pay only when the agent completes valuable work.</p>
+    </section>
 
-  document.getElementById('audit').innerHTML = audit.map(a => `
-    <div class="audit-entry">
-      <span class="ts">${new Date(a.timestamp).toLocaleTimeString()}</span> —
-      <strong>${a.action}</strong> ${a.orderId ? `(order ${a.orderId})` : ''}
-      ${a.amount ? ` — ₹${a.amount}` : ''}<br/>${a.reasoning || ''}
-    </div>
-  `).join('') || '<div style="color:#6b6b6b;">No activity yet.</div>';
-}
+    <div id="statusBanner" class="status-banner" role="status">Connecting to Cakebot…</div>
 
-loadStatus();
-refresh();
-setInterval(refresh, 4000);
-</script>
+    <section class="metrics" aria-label="Overview metrics">
+      <article class="metric"><div class="metric-label"><span>Orders completed</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="m8 12 2.5 2.5L16 9"/></svg></span></div><div id="metricCompleted" class="metric-value">—</div></article>
+      <article class="metric"><div class="metric-label"><span>Revenue collected</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M17 7.5c0-1.5-2.2-2.5-5-2.5S7 6 7 7.5 9.2 10 12 10s5 1.1 5 2.5-2.2 2.5-5 2.5-5-1-5-2.5"/></svg></span></div><div id="metricRevenue" class="metric-value">—</div></article>
+      <article class="metric"><div class="metric-label"><span>Agent wallet balance</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H20v14H6.5A2.5 2.5 0 0 1 4 16.5v-9Z"/><path d="M4 8h16M15 12h2"/></svg></span></div><div id="metricWallet" class="metric-value">—</div></article>
+      <article class="metric"><div class="metric-label"><span>Agent fees this month</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19 19 5M7.5 8A2.5 2.5 0 1 0 7.5 3a2.5 2.5 0 0 0 0 5ZM16.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/></svg></span></div><div id="metricFees" class="metric-value">—</div></article>
+    </section>
+
+    <section id="simulator" class="section">
+      <div class="section-heading"><div><h2>Talk to your customer</h2><p>Send a natural-language request and watch the agent complete the workflow.</p></div><span class="section-kicker">Live agent simulator</span></div>
+      <div class="workspace">
+        <article class="card composer-card">
+          <div class="card-header"><div><h3>New customer request</h3><p>Cakebot will parse, quote, check availability, and apply its guardrails.</p></div><span class="status-tag success">Ready</span></div>
+          <div class="card-body">
+            <label for="customerName">Customer name</label>
+            <input id="customerName" value="Priya" autocomplete="name" />
+            <label for="message">Customer message</label>
+            <textarea id="message" aria-describedby="messageHelp">I'd like a 2kg chocolate cake for 2026-09-20</textarea>
+            <div id="messageHelp" class="helper" style="margin-top:7px;">Try one of the examples, or write the request in your own words.</div>
+            <div class="examples" aria-label="Example customer messages">
+              <button class="chip" type="button" data-example="2kg chocolate cake for September 20">2kg chocolate • Sep 20</button>
+              <button class="chip" type="button" data-example="5kg red velvet cake for a wedding">5kg red velvet • wedding</button>
+              <button class="chip" type="button" data-example="Make it pastel blue with football decorations">Pastel blue • football</button>
+              <button class="chip" type="button" data-example="2kg chocolate cake for 2026-09-15">Already-booked date</button>
+            </div>
+            <div class="composer-footer">
+              <span class="helper">Low-confidence or conflicting requests are always paused for review.</span>
+              <button id="submitButton" class="button primary" type="button" data-action="submit-order" data-busy-key="submit">Send to Cakebot <span aria-hidden="true">→</span></button>
+            </div>
+            <div id="conversation" class="conversation empty">Your conversation will appear here after the first request.</div>
+          </div>
+        </article>
+
+        <aside class="card agent-panel" aria-labelledby="controlTitle">
+          <div class="agent-heading"><h3 id="controlTitle">Agent control centre</h3><span class="online-label">● Online</span></div>
+          <div class="guardrails">
+            <div class="guardrail"><span>Agent status</span><strong>Online</strong></div>
+            <div class="guardrail"><span>Auto-approval limit</span><strong>₹5,000</strong></div>
+            <div class="guardrail"><span>Low-confidence requests</span><strong>Human review</strong></div>
+            <div class="guardrail"><span>Existing date conflicts</span><strong>Blocked</strong></div>
+            <div class="guardrail"><span>Payment provider</span><strong>Razorpay</strong></div>
+            <div class="guardrail"><span>Audit trail</span><strong>Enabled</strong></div>
+          </div>
+          <p class="flow-title">How the agent decides</p>
+          <div id="decisionFlow" class="flow" aria-label="Agent decision flow">
+            <span class="flow-step active">Understand</span><span class="flow-arrow">›</span><span class="flow-step">Check</span><span class="flow-arrow">›</span><span class="flow-step">Decide</span><span class="flow-arrow">›</span><span class="flow-step">Collect</span><span class="flow-arrow">›</span><span class="flow-step">Confirm</span>
+          </div>
+          <div id="processingPanel" class="processing" hidden></div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="orders-section" class="section">
+      <div class="section-heading"><div><h2>Agent-managed orders</h2><p>Every order is visible from the first message to the final wallet deduction.</p></div><span class="section-kicker">Real-time workflow</span></div>
+      <div id="orders" class="orders-list"></div>
+    </section>
+
+    <section id="wallet-section" class="section">
+      <div class="section-heading"><div><h2>Merchant wallet</h2><p>Usage-based billing that only moves after valuable work is completed.</p></div><span class="section-kicker">INR prepaid balance</span></div>
+      <div class="lower-grid">
+        <article class="card wallet-card">
+          <div class="wallet-top"><div><div class="wallet-label">Agent wallet <span style="color:#f6bd63;">• demo balance</span></div><div id="walletBalance" class="wallet-balance">₹250.00</div><div class="wallet-status">Available balance · in-memory demo state</div></div><div aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#91a5c0" stroke-width="1.4"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H20v14H6.5A2.5 2.5 0 0 1 4 16.5v-9Z"/><path d="M4 8h16M15 12h2"/></svg></div></div>
+          <div class="wallet-actions"><button class="button secondary" type="button" data-action="add-funds">Add funds</button><button class="button secondary" type="button" data-action="view-transactions">View transactions</button></div>
+          <div class="wallet-rules"><div class="wallet-rule">₹5 deducted only after successful completion</div><div class="wallet-rule">Wallet funded through Razorpay</div><div class="wallet-rule">No charge for failed or escalated requests</div></div>
+          <div id="walletWarning" class="wallet-warning" hidden>Balance is getting low. Add funds before your next completed run.</div>
+        </article>
+        <article class="card activity-card" id="transactions">
+          <div class="card-header" style="padding:0 0 18px;"><div><h3>Wallet transactions</h3><p>Demo entries are clearly marked until wallet persistence is connected.</p></div></div>
+          <div id="walletTransactions"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="activity-section" class="section">
+      <div class="section-heading"><div><h2>Agent activity</h2><p>A readable record of every decision, explanation, and payment event.</p></div><span class="section-kicker">Explainable by design</span></div>
+      <article class="card activity-card"><div id="activity" class="activity-list"></div></article>
+    </section>
+
+    <section class="section">
+      <div class="section-heading"><div><h2>Create a cake preview</h2><p>Prepare a design brief before image generation is connected.</p></div><span class="section-kicker">Optional creative step</span></div>
+      <article class="card preview-card">
+        <div class="preview-copy">
+          <h3>Make the idea tangible.</h3>
+          <p>Describe a cake design and keep it alongside the order. Preview generation will plug into this surface when connected.</p>
+          <div class="preview-form"><label for="designPrompt">Design description</label><input id="designPrompt" placeholder="Pastel blue cake with football decorations…" /></div>
+          <div class="order-actions"><button class="button secondary" type="button" data-action="preview-coming">Generate preview</button><button class="button ghost" type="button" data-action="preview-coming">Approve design</button></div>
+        </div>
+        <div class="preview-stage" aria-label="Cake preview placeholder"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 11.5h16v7.25A1.25 1.25 0 0 1 18.75 20H5.25A1.25 1.25 0 0 1 4 18.75V11.5Z"/><path d="M3 8.75h18v2.75H3zM8 8.75c-1.8 0-2.5-1.06-2.5-2.04 0-1.1.93-1.96 2.04-1.96C9.3 4.75 10 6.35 12 8.75c2-2.4 2.7-4 4.46-4 1.11 0 2.04.86 2.04 1.96 0 .98-.7 2.04-2.5 2.04"/><path d="M12 11.5V20"/></svg><strong>Cake preview will appear here</strong><span>No image has been generated yet. This is not connected to an image provider.</span></div>
+      </article>
+    </section>
+  </main>
+  <footer class="footer shell">Cakebot · AI commerce employee for small food businesses · Razorpay test mode</footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const state = { orders: [], audit: [], status: {}, busy: new Set(), processing: false, refreshInFlight: false, toastTimer: null };
+    const processingStages = ['Understanding request', 'Extracting order details', 'Checking availability', 'Applying pricing rules', 'Deciding whether approval is required', 'Creating Razorpay payment link'];
+
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]));
+    const formatINR = (amount) => `₹${Number(amount || 0).toLocaleString('en-IN')}`;
+    const formatDate = (value) => {
+      if (!value) return 'Date not set';
+      const date = new Date(`${value}T00:00:00`);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+    const formatTime = (value) => value ? new Date(value).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : '';
+    const initials = (name) => String(name || 'Customer').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+    const getItems = (order) => order.parsed?.items || [];
+    const primaryDate = (order) => getItems(order)[0]?.date || 'Not set';
+    const feeCount = () => state.orders.filter((order) => Number(order.perRunFeeCharged) > 0).length;
+    const walletBalance = () => Math.max(0, 250 - feeCount() * 5);
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, options);
+      const text = await response.text();
+      let data;
+      try { data = text ? JSON.parse(text) : {}; } catch {
+        throw new Error(response.ok ? 'The server returned an unexpected response.' : `Request failed (${response.status}).`);
+      }
+      if (!response.ok) throw new Error(data.error || `Request failed (${response.status}).`);
+      return data;
+    }
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast show${isError ? ' error' : ''}`;
+      clearTimeout(state.toastTimer);
+      state.toastTimer = setTimeout(() => { toast.className = 'toast'; }, 4200);
+    }
+
+    function setBusy(key, busy) {
+      busy ? state.busy.add(key) : state.busy.delete(key);
+      document.querySelectorAll(`[data-busy-key="${key}"]`).forEach((button) => { button.disabled = busy; });
+    }
+
+    function statusTag(order) {
+      if (order.status === 'confirmed') return ['Completed', 'success'];
+      if (order.status === 'awaiting_payment') return ['Awaiting payment', 'info'];
+      if (order.status === 'escalated') return ['Escalated safely', 'blocked'];
+      if (order.status === 'rejected') return ['Quote declined', 'rejected'];
+      if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return ['Needs baker approval', 'pending'];
+      if (order.approvedByBaker) return ['Approved · payment ready', 'info'];
+      return ['Quote ready', 'success'];
+    }
+
+    function responseCopy(order) {
+      if (order.status === 'confirmed') return `Payment confirmed for ${formatINR(order.amount)}. The order is complete, and the agent fee is shown below.`;
+      if (order.status === 'awaiting_payment') return `I found availability and quoted ${formatINR(order.amount)}. A secure Razorpay payment link is ready for the customer.`;
+      if (order.status === 'escalated') return `I paused safely: ${order.reasoning || 'This request needs a human review.'} No payment link was created.`;
+      if (order.status === 'rejected') return 'The baker declined this quote. No payment link was created and no wallet fee was charged.';
+      if (order.decision === 'PENDING_APPROVAL') return `This order totals ${formatINR(order.amount)}, which is above the ₹5,000 auto-approval limit. I paused the payment request and asked the baker for approval.`;
+      return `I found availability and quoted ${formatINR(order.amount)}. I’m creating a secure Razorpay payment link now.`;
+    }
+
+    function updateConversation(order) {
+      const conversation = document.getElementById('conversation');
+      conversation.className = 'conversation';
+      conversation.innerHTML = `<div class="conversation-label">Customer</div><div class="bubble customer">${escapeHtml(order.message)}</div><div class="conversation-label" style="margin-top:14px;">Cakebot</div><div class="bubble bot">${escapeHtml(responseCopy(order))}</div>`;
+    }
+
+    function renderProcessing(activeIndex = 0, complete = false, error = false) {
+      const panel = document.getElementById('processingPanel');
+      if (complete || error) {
+        panel.hidden = false;
+        panel.innerHTML = `<strong>${error ? 'Agent paused with an error' : 'Agent workflow complete'}</strong><div class="processing-list">${processingStages.map((stage) => `<div class="processing-step ${error ? '' : 'done'}">${escapeHtml(stage)}</div>`).join('')}</div>`;
+        return;
+      }
+      panel.hidden = false;
+      panel.innerHTML = `<strong>Agent is working…</strong><div class="processing-list">${processingStages.map((stage, index) => `<div class="processing-step ${index < activeIndex ? 'done' : index === activeIndex ? 'active' : ''}">${escapeHtml(stage)}</div>`).join('')}</div>`;
+    }
+
+    function beginProcessing() {
+      let index = 0;
+      renderProcessing(index);
+      const timer = setInterval(() => { index = Math.min(index + 1, processingStages.length - 1); renderProcessing(index); }, 470);
+      return () => clearInterval(timer);
+    }
+
+    function renderMetrics() {
+      const completed = state.orders.filter((order) => order.status === 'confirmed');
+      document.getElementById('metricCompleted').textContent = completed.length;
+      document.getElementById('metricRevenue').innerHTML = `${formatINR(completed.reduce((sum, order) => sum + Number(order.amount || 0), 0))}<small> collected</small>`;
+      document.getElementById('metricWallet').textContent = `${formatINR(walletBalance())}`;
+      document.getElementById('metricFees').innerHTML = `${formatINR(feeCount() * 5)}<small> this month</small>`;
+      document.getElementById('walletBalance').textContent = `${formatINR(walletBalance())}.00`;
+      document.getElementById('walletWarning').hidden = walletBalance() > 50;
+    }
+
+    function workflowSteps(order) {
+      const hasPayment = Boolean(order.paymentLink);
+      const completed = order.status === 'confirmed';
+      const escalated = order.status === 'escalated';
+      const approval = order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker && !order.rejectedByBaker;
+      const rejected = order.status === 'rejected';
+      const parsed = Boolean(getItems(order).length);
+      return [
+        ['Request understood', true],
+        ['Details extracted', parsed],
+        ['Availability checked', !escalated && parsed],
+        ['Pricing calculated', Boolean(order.amount)],
+        ['Agent decision', true],
+        ['Payment link created', hasPayment],
+        ['Payment confirmed', completed],
+        ['Order completed', completed],
+        ['Fee deducted', Boolean(order.perRunFeeCharged)]
+      ].map(([label, done], index, all) => {
+        let mode = done ? 'done' : '';
+        if (!done && ((approval && index === 4) || (escalated && index === 4) || (rejected && index === 4) || (!hasPayment && !approval && !escalated && !rejected && index === 5) || (hasPayment && !completed && index === 6))) mode = approval ? 'wait' : escalated || rejected ? 'blocked' : 'active';
+        return { label, mode };
+      });
+    }
+
+    function renderTimeline(order) {
+      return `<div class="timeline" aria-label="Order workflow timeline">${workflowSteps(order).map((step) => `<div class="timeline-step ${step.mode}"><span class="timeline-dot" aria-hidden="true"></span><span>${escapeHtml(step.label)}</span></div>`).join('')}</div>`;
+    }
+
+    function decisionPanel(order) {
+      if (order.status === 'confirmed') return `<div class="decision-panel success"><strong>Order completed successfully</strong>Customer payment ${formatINR(order.amount)} confirmed for ${formatDate(primaryDate(order))}. ${order.feeMode === 'simulated' ? 'Fee simulated in mock mode.' : order.feeMode === 'order-created' ? 'Razorpay order created for the agent fee; no debit is represented here.' : 'Agent fee state is pending confirmation.'}</div>`;
+      if (order.status === 'escalated') return `<div class="decision-panel blocked"><strong>Agent paused safely</strong>${escapeHtml(order.reasoning || 'This request needs human review.')} No payment link was created and no wallet fee was charged.</div>`;
+      if (order.status === 'rejected') return `<div class="decision-panel blocked"><strong>Quote declined by baker</strong>No payment link was created and no wallet fee was charged.</div>`;
+      if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return `<div class="decision-panel warn"><strong>Human approval required</strong>${escapeHtml(order.reasoning || 'This order is above the auto-approval limit.')}</div>`;
+      return `<div class="decision-panel"><strong>Agent reasoning</strong>${escapeHtml(order.reasoning || 'Order is within the agent’s current guardrails.')}</div>`;
+    }
+
+    function paymentBox(order) {
+      if (order.status === 'confirmed') return `<div class="payment-box"><div><span class="payment-box-title">Payment confirmed</span><div class="payment-box-meta">Customer payment received · agent fee ${order.feeMode === 'simulated' ? 'simulated' : 'Razorpay order created'}</div></div><span class="status-tag success">Complete</span></div>`;
+      if (!order.paymentLink) return '';
+      return `<div class="payment-box"><div><span class="payment-box-title">Razorpay payment link</span><div class="payment-box-meta">Ready for ${escapeHtml(order.customerName)} · <a href="${escapeHtml(order.paymentLink)}" target="_blank" rel="noopener">Open link</a></div></div><div class="payment-actions"><button class="button ghost" type="button" data-action="copy-link" data-id="${escapeHtml(order.id)}" data-busy-key="copy-link-${escapeHtml(order.id)}">Copy link</button><button class="button primary" type="button" data-action="mark-paid" data-id="${escapeHtml(order.id)}" data-busy-key="mark-paid-${escapeHtml(order.id)}"><span class="demo-label">Demo action</span>Simulate payment</button></div></div>`;
+    }
+
+    function orderActions(order) {
+      if (order.status === 'awaiting_payment') return '';
+      if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return `<div class="order-actions"><button class="button warn" type="button" data-action="approve" data-id="${escapeHtml(order.id)}" data-busy-key="approve-${escapeHtml(order.id)}">Approve quote</button><button class="button danger" type="button" data-action="reject" data-id="${escapeHtml(order.id)}" data-busy-key="reject-${escapeHtml(order.id)}">Reject order</button></div>`;
+      if (order.status === 'quoted' && !order.paymentLink) return `<div class="order-actions"><button class="button primary" type="button" data-action="send-link" data-id="${escapeHtml(order.id)}" data-busy-key="send-payment-link-${escapeHtml(order.id)}">Create payment link</button></div>`;
+      return '';
+    }
+
+    function renderOrders() {
+      const target = document.getElementById('orders');
+      if (!state.orders.length) {
+        target.innerHTML = '<div class="empty-state"><strong>Your agent is ready.</strong><span>Send a customer message to start the first workflow.</span></div>';
+        return;
+      }
+      target.innerHTML = state.orders.map((order) => {
+        const [tag, tagClass] = statusTag(order);
+        const itemSummary = order.itemsSummary || getItems(order).map((item) => `${item.weightKg}kg ${item.flavor}`).join(' + ') || 'Order details need review';
+        const feeText = order.perRunFeeCharged ? (order.feeMode === 'simulated' ? 'Fee simulated' : 'Razorpay order created') : 'Not charged';
+        return `<article class="card order-card"><div class="order-top"><div class="order-customer"><span class="customer-avatar">${escapeHtml(initials(order.customerName))}</span><div><h3>${escapeHtml(order.customerName || 'Anonymous customer')}</h3><div class="order-message">${escapeHtml(order.message)}</div></div></div><span class="status-tag ${tagClass}">${tag}</span></div><div class="order-summary"><div class="summary-item"><span>Cake items</span><strong>${escapeHtml(itemSummary)}</strong></div><div class="summary-item"><span>Delivery date</span><strong>${escapeHtml(formatDate(primaryDate(order)))}</strong></div><div class="summary-item"><span>Agent fee</span><strong>${escapeHtml(feeText)}</strong></div><div class="summary-item amount"><span>Quote</span><strong>${order.amount ? formatINR(order.amount) : 'Pending'}</strong></div></div>${renderTimeline(order)}${decisionPanel(order)}${paymentBox(order)}${orderActions(order)}${order.actionError ? `<div class="error-inline">${escapeHtml(order.actionError)}</div>` : ''}</article>`;
+      }).join('');
+    }
+
+    const eventCopy = {
+      AUTO_APPROVED: ['Order auto-approved', 'Quote stayed within availability, confidence, and amount limits.', 'success'],
+      PENDING_APPROVAL: ['Approval required', 'The quote crossed the ₹5,000 auto-approval limit.', 'warn'],
+      ESCALATE: ['Request paused safely', 'Cakebot escalated instead of guessing or creating a payment link.', 'danger'],
+      PAYMENT_LINK_CREATED_AUTONOMOUSLY: ['Payment link created', 'Razorpay link created automatically within the agent guardrails.', 'success'],
+      PAYMENT_LINK_SENT: ['Payment link created', 'Baker approval recorded and the Razorpay link was sent.', 'success'],
+      CUSTOMER_PAYMENT_CONFIRMED: ['Customer payment confirmed', 'The order moved into the completed workflow.', 'success'],
+      PER_RUN_FEE_CHARGED: ['Agent fee recorded', 'The completed run moved the ₹5 fee into the demo wallet ledger.', 'success'],
+      BAKER_APPROVED: ['Baker approved quote', 'Approval recorded without a page reload.', 'success'],
+      BAKER_REJECTED: ['Baker rejected quote', 'No payment link or wallet fee was created.', 'danger'],
+      PAYMENT_LINK_FAILED: ['Payment link failed', 'Razorpay could not create the payment link.', 'danger'],
+      PER_RUN_FEE_FAILED: ['Agent fee failed', 'The order is confirmed but the fee needs attention.', 'danger'],
+      PARSE_FAILED: ['Agent parsing failed', 'The request could not be parsed.', 'danger']
+    };
+
+    function renderActivity() {
+      const target = document.getElementById('activity');
+      if (!state.audit.length) {
+        target.innerHTML = '<div class="empty-state"><strong>No agent activity yet.</strong><span>Every decision will appear here with its reasoning.</span></div>';
+        return;
+      }
+      target.innerHTML = state.audit.slice(0, 24).map((event) => {
+        const copy = eventCopy[event.action] || [event.action.replaceAll('_', ' '), event.reasoning || 'Agent activity recorded.', ''];
+        return `<div class="activity-item"><span class="activity-icon ${copy[2]}">${copy[2] === 'danger' ? '!' : copy[2] === 'warn' ? '!' : '✓'}</span><div><div class="activity-title">${escapeHtml(copy[0])}${event.orderId ? ` <span style="color:var(--muted-light);font-weight:500;">· ${escapeHtml(event.orderId)}</span>` : ''}</div><div class="activity-detail">${escapeHtml(event.reasoning || copy[1])}</div>${event.amount ? `<div class="activity-amount">${formatINR(event.amount)}${event.action === 'PER_RUN_FEE_CHARGED' ? ' · wallet effect' : ''}</div>` : ''}</div><time class="activity-time">${escapeHtml(formatTime(event.timestamp))}</time></div>`;
+      }).join('');
+    }
+
+    function renderWalletTransactions() {
+      const target = document.getElementById('walletTransactions');
+      const entries = [{ amount: 250, label: 'Demo wallet provisioned', meta: 'Simulated starting balance' }, ...state.orders.filter((order) => order.perRunFeeCharged).map((order) => ({ amount: -5, label: 'Cake order completed', meta: `${order.customerName} · ${order.feeMode === 'simulated' ? 'Fee simulated' : 'Razorpay order created'}` }))];
+      target.innerHTML = entries.length ? entries.slice(0, 6).map((entry) => `<div class="activity-item"><span class="activity-icon ${entry.amount > 0 ? 'success' : ''}">${entry.amount > 0 ? '+' : '−'}</span><div><div class="activity-title">${escapeHtml(entry.label)}</div><div class="activity-detail">${escapeHtml(entry.meta)}</div></div><div class="activity-amount" style="color:${entry.amount > 0 ? 'var(--green)' : 'var(--red)'}">${entry.amount > 0 ? '+' : '−'}${formatINR(Math.abs(entry.amount))}</div></div>`).join('') : '<div class="empty-state"><strong>No wallet activity yet.</strong><span>Add funds to let Cakebot complete paid workflows.</span></div>';
+    }
+
+    function updateDecisionFlow() {
+      const steps = document.querySelectorAll('#decisionFlow .flow-step');
+      steps.forEach((step, index) => step.classList.toggle('active', state.processing ? index === 0 : index === 0));
+    }
+
+    async function refresh(silent = false) {
+      if (state.refreshInFlight) return;
+      state.refreshInFlight = true;
+      try {
+        const [orders, audit] = await Promise.all([api('/api/orders'), api('/api/audit')]);
+        state.orders = Array.isArray(orders) ? orders : [];
+        state.audit = Array.isArray(audit) ? audit : [];
+        renderMetrics(); renderOrders(); renderActivity(); renderWalletTransactions();
+      } catch (error) {
+        if (!silent) showToast(error.message, true);
+      } finally { state.refreshInFlight = false; }
+    }
+
+    async function loadStatus() {
+      try {
+        state.status = await api('/api/status');
+        const live = state.status.razorpayMode !== 'mock';
+        document.getElementById('modeBadge').textContent = live ? 'Razorpay test mode' : 'Razorpay mock mode';
+        const banner = document.getElementById('statusBanner');
+        banner.className = `status-banner ${live ? 'live' : 'mock'}`;
+        banner.innerHTML = live ? '<strong>Connected to Razorpay test mode.</strong><span>Payment links are using your configured test credentials.</span>' : '<strong>Running in mock mode.</strong><span>Add test-mode Razorpay keys for live payment-link calls.</span>';
+      } catch (error) { document.getElementById('statusBanner').textContent = error.message; }
+    }
+
+    async function submitOrder() {
+      const customerName = document.getElementById('customerName').value.trim();
+      const message = document.getElementById('message').value.trim();
+      if (!message) { showToast('Add a customer message before sending.', true); document.getElementById('message').focus(); return; }
+      setBusy('submit', true); state.processing = true; updateDecisionFlow();
+      const stopProcessing = beginProcessing();
+      try {
+        const order = await api('/api/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName, message }) });
+        stopProcessing(); state.processing = false; renderProcessing(0, true); updateConversation(order); showToast('Request sent to Cakebot.'); await refresh(true);
+      } catch (error) { stopProcessing(); state.processing = false; renderProcessing(0, false, true); showToast(error.message, true); }
+      finally { setBusy('submit', false); }
+    }
+
+    function findOrder(id) { return state.orders.find((order) => order.id === id); }
+    async function orderAction(id, action, successMessage) {
+      const key = `${action}-${id}`; setBusy(key, true);
+      try { const result = await api(`/api/order/${encodeURIComponent(id)}/${action}`, { method: 'POST' }); showToast(successMessage); await refresh(true); return result; }
+      catch (error) { const order = findOrder(id); if (order) order.actionError = error.message; renderOrders(); showToast(error.message, true); }
+      finally { setBusy(key, false); }
+    }
+
+    async function copyLink(id) {
+      const order = findOrder(id);
+      if (!order?.paymentLink) return;
+      try { await navigator.clipboard.writeText(order.paymentLink); showToast('Payment link copied.'); }
+      catch { showToast('Copy failed. Open the payment link instead.', true); }
+    }
+
+    document.addEventListener('click', (event) => {
+      const example = event.target.closest('[data-example]');
+      if (example) { document.getElementById('message').value = example.dataset.example; document.getElementById('message').focus(); return; }
+      const button = event.target.closest('[data-action]');
+      if (!button || button.disabled) return;
+      const { action, id } = button.dataset;
+      if (action === 'submit-order') submitOrder();
+      if (action === 'approve') orderAction(id, 'approve', 'Approval recorded.');
+      if (action === 'reject') orderAction(id, 'reject', 'Quote declined safely.');
+      if (action === 'send-link') orderAction(id, 'send-payment-link', 'Razorpay payment link created.');
+      if (action === 'mark-paid') orderAction(id, 'mark-paid', 'Customer payment simulated and order completed.');
+      if (action === 'copy-link') copyLink(id);
+      if (action === 'add-funds') showToast('Wallet funding is represented through Razorpay. This demo does not move real funds.');
+      if (action === 'view-transactions') document.getElementById('transactions').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (action === 'preview-coming') showToast('Preview generation is ready for an image provider connection, but no image was generated.');
+    });
+
+    loadStatus(); refresh(); setInterval(() => refresh(true), 4000); renderMetrics(); renderWalletTransactions(); updateDecisionFlow();
+  </script>
 </body>
 </html>

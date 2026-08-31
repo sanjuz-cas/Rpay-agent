@@ -113,24 +113,49 @@ app.post('/api/order/:id/approve', (req, res) => {
   res.json(order);
 });
 
+app.post('/api/order/:id/reject', (req, res) => {
+  const order = orders.get(req.params.id);
+  if (!order) return res.status(404).json({ error: 'order not found' });
+  if (order.decision !== 'PENDING_APPROVAL' || order.approvedByBaker) {
+    return res.status(400).json({ error: 'This order is not waiting for baker approval.' });
+  }
+
+  order.status = 'rejected';
+  order.rejectedByBaker = true;
+  orders.set(order.id, order);
+  logAudit({
+    orderId: order.id,
+    action: 'BAKER_REJECTED',
+    reasoning: 'Baker rejected the quote. No payment link was created and no wallet fee was charged.',
+    amount: order.amount,
+  });
+  res.json(order);
+});
+
 // 3. Customer pays -> order confirmed -> agent charges the BAKER the small per-run fee
 //    (In production this route doubles as the Razorpay webhook target.)
 async function markPaid(req, res) {
   const order = orders.get(req.params.id);
   if (!order) return res.status(404).json({ error: 'order not found' });
-  if (order.status === 'confirmed') return res.json({ order, alreadyProcessed: true });
-  if (order.status !== 'awaiting_payment') return res.status(400).json({ error: 'Order is not awaiting payment.' });
+  if (order.status === 'confirmed' && order.perRunFeeCharged) {
+    return res.json({ order, alreadyProcessed: true });
+  }
+  if (order.status !== 'awaiting_payment' && order.status !== 'confirmed') {
+    return res.status(400).json({ error: 'Order is not awaiting payment.' });
+  }
 
-  order.status = 'confirmed';
-  for (const item of order.parsed.items || []) bookedDates.add(item.date);
-  orders.set(order.id, order);
+  if (order.status === 'awaiting_payment') {
+    order.status = 'confirmed';
+    for (const item of order.parsed.items || []) bookedDates.add(item.date);
+    orders.set(order.id, order);
 
-  logAudit({
-    orderId: order.id,
-    action: 'CUSTOMER_PAYMENT_CONFIRMED',
-    reasoning: `Customer paid ₹${order.amount}. Order confirmed: ${order.itemsSummary || order.parsed?.date || 'see items'}.`,
-    amount: order.amount,
-  });
+    logAudit({
+      orderId: order.id,
+      action: 'CUSTOMER_PAYMENT_CONFIRMED',
+      reasoning: `Customer paid ₹${order.amount}. Order confirmed: ${order.itemsSummary || order.parsed?.date || 'see items'}.`,
+      amount: order.amount,
+    });
+  }
 
   try {
     const fee = await chargePerRunFee({ orderId: order.id, feeAmount: PER_RUN_FEE });

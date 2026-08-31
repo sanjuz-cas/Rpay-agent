@@ -130,11 +130,15 @@ async function parseOrderWithLLM(message) {
     };
   }
 
-  console.warn('[llmAgent] No GEMINI_API_KEY or ANTHROPIC_API_KEY set — using regex fallback, forced to low confidence.');
+  console.warn('[llmAgent] No GEMINI_API_KEY or ANTHROPIC_API_KEY set — using deterministic fallback.');
+  const fallback = heuristicParse(message);
+  const complete = Boolean(message.match(/(\d+(\.\d+)?)\s*kg/i) && fallback.date && fallback.flavor !== 'default');
   return {
-    ...heuristicParse(message),
-    confidence: 'low',
-    reasoning: 'No model API key configured — parsed with a regex fallback instead of the model, so treated as low-confidence and escalated for human review.',
+    items: [{ weightKg: fallback.weightKg, flavor: fallback.flavor, date: fallback.date }],
+    confidence: complete ? 'high' : 'low',
+    reasoning: complete
+      ? 'No model API key configured — used the deterministic parser because weight, flavor, and date were explicit.'
+      : 'No model API key configured — required order fields were not explicit, so review is required.',
     usedFallback: true,
   };
 }

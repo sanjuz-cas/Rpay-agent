@@ -57,9 +57,10 @@ npm start
 ```
 
 Then open `http://localhost:3000`. Without a model key (Gemini or
-Anthropic), order parsing falls back to regex and every order is escalated
-(by design — see above). Without Razorpay keys, payments run in mock mode.
-Add both to see the full live loop. Gemini is checked first since it has a
+Anthropic), fully explicit requests (weight, flavor, and an ISO delivery date)
+use a deterministic parser; incomplete requests are escalated for review.
+Without Razorpay keys, payments run in mock mode. Add both to see the full
+live loop. Gemini is checked first since it has a
 free tier with no credit card required — get a key at
 [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 
@@ -74,9 +75,9 @@ free tier with no credit card required — get a key at
   merchant fee is simulated in mock mode; with Razorpay keys the demo creates
   a Razorpay Order, but production billing would require a mandate or saved
   payment method.
-  Without `ANTHROPIC_API_KEY` set, order parsing falls back to a regex
-  heuristic and is deliberately forced to low confidence, so it always
-  escalates rather than silently running on a weaker parser.
+Without `ANTHROPIC_API_KEY` set, order parsing uses a deterministic heuristic
+for requests whose weight, flavor, and date are explicit. Requests with
+missing or ambiguous fields remain low-confidence and escalate safely.
 
 ## Architecture
 

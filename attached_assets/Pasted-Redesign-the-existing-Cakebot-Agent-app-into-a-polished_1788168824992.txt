@@ -1,0 +1,452 @@
+Redesign the existing Cakebot Agent app into a polished, premium merchant operating system with an Apple-inspired minimal UI.
+
+First inspect the existing project and understand the current Express backend, API routes, order flow, Razorpay integration, approval flow, audit trail, and fallback parser.
+
+Do not rewrite or remove working backend functionality. Preserve the existing Node.js/Express server and API contract. Make the frontend the main focus. Keep the app runnable with:
+
+npm start
+
+Product concept:
+
+Cakebot is an AI employee for small food businesses. It receives customer orders, understands natural-language requests, checks availability, calculates pricing, applies merchant guardrails, generates optional cake design previews, creates Razorpay payment links, monitors payment confirmation, confirms orders, and deducts a small usage fee from the merchant’s prepaid agent wallet only after successful completion.
+
+Do not implement a crypto wallet. This is an INR prepaid merchant wallet funded through Razorpay.
+
+Design direction:
+
+- Premium Apple-inspired minimalism
+- Calm, spacious, elegant layout
+- White and soft-gray surfaces
+- Dark navy text
+- Razorpay-inspired blue accent
+- Warm peach/coral accent for cake-related elements
+- Green for successful actions
+- Amber for approval-required actions
+- Red only for errors
+- Rounded cards with subtle borders
+- Soft shadows
+- High-quality typography using Inter, Geist, or system SF Pro-style fonts
+- Responsive desktop and mobile layout
+- Avoid a generic admin dashboard
+- Avoid dense tables, excessive gradients, loud colors, and unnecessary decoration
+- Add subtle 150–250ms transitions
+- Make the interface feel like a real product that could be shown to a merchant or investor
+
+Main navigation:
+
+Create a clean top navigation bar with:
+
+Left:
+- Cakebot icon
+- Cakebot
+- “AI commerce employee”
+
+Navigation links:
+- Overview
+- Orders
+- Agent activity
+- Wallet
+
+Right:
+- Green “Agent online” indicator
+- “Razorpay test mode” badge
+- Merchant avatar with “Priya’s Bakery”
+
+Hero section:
+
+Heading:
+
+Your AI employee for every order.
+
+Supporting copy:
+
+Cakebot turns customer conversations into completed, paid orders—while knowing when to act and when to ask for help.
+
+Add two primary buttons:
+
+- Test the agent
+- View wallet
+
+Add a compact explanation:
+
+No monthly subscription. Pay only when the agent completes valuable work.
+
+Overview metrics:
+
+Show four elegant metric cards:
+
+- Orders completed
+- Revenue collected
+- Agent wallet balance
+- Agent fees this month
+
+Use live data from the existing API where possible. Do not hardcode fake orders.
+
+Main dashboard layout:
+
+Create a two-column layout.
+
+LEFT: Customer conversation simulator
+
+Title:
+
+Talk to your customer
+
+Subtitle:
+
+Send a natural-language request and watch the agent complete the workflow.
+
+Include:
+
+- Customer name input
+- Large WhatsApp-style message composer
+- Example message chips:
+  - “2kg chocolate cake for September 20”
+  - “5kg red velvet cake for a wedding”
+  - “Make it pastel blue with football decorations”
+  - “Cake for the already-booked date”
+- Primary button: Send to Cakebot
+
+When submitting, show a clear animated agent state:
+
+- Understanding request
+- Extracting order details
+- Checking availability
+- Applying pricing rules
+- Deciding whether approval is required
+- Creating Razorpay payment link
+
+Show the conversation as chat bubbles:
+
+Customer bubble:
+The original customer message.
+
+Cakebot bubble:
+A natural-language response explaining what the agent found and what happens next.
+
+Examples:
+
+For a normal order:
+
+“I found availability for September 20. The total is ₹1,800. I’m creating a secure Razorpay payment link now.”
+
+For a high-value order:
+
+“This order totals ₹18,000, which is above the ₹5,000 auto-approval limit. I’ve paused the payment request and asked the baker for approval.”
+
+For a conflict:
+
+“September 15 is already booked. I have not created a payment link. The baker needs to choose another date.”
+
+RIGHT: Agent control centre
+
+Title:
+
+Agent control centre
+
+Show the current agent status and guardrails in compact cards:
+
+- Agent status: Online
+- Auto-approval limit: ₹5,000
+- Low-confidence requests: Human review
+- Existing date conflicts: Blocked
+- Payment provider: Razorpay
+- Audit trail: Enabled
+
+Add a “How the agent decides” mini-flow:
+
+Understand → Check → Decide → Collect → Confirm
+
+Make the current stage visually active.
+
+Merchant wallet section:
+
+Create a premium wallet card showing:
+
+Agent wallet
+
+₹245.00
+
+Available balance
+
+Buttons:
+
+- Add funds
+- View transactions
+
+Show:
+
+- “₹5 deducted only after successful completion”
+- “Wallet funded through Razorpay”
+- “No charge for failed or escalated requests”
+
+Add a low-balance warning when balance is low.
+
+Wallet transaction history:
+
+Show entries such as:
+
++ ₹500 — Wallet top-up via Razorpay
+- ₹5 — Cake order completed
+- ₹5 — Custom design generated
+- ₹5 — Order workflow completed
+
+Clearly label demo or simulated wallet transactions if the current backend does not yet persist real wallet data.
+
+Orders section:
+
+Create a beautiful “Agent-managed orders” section.
+
+Each order should be a rich workflow card, not a plain row.
+
+Display:
+
+- Customer name
+- Original message
+- Current status badge:
+  - Completed
+  - Awaiting payment
+  - Needs baker approval
+  - Escalated safely
+- Order amount
+- Delivery date
+- Cake items
+- Payment status
+- Agent fee status
+- Wallet balance after deduction
+
+Workflow timeline for each order:
+
+1. Request understood
+2. Order details extracted
+3. Availability checked
+4. Pricing calculated
+5. Agent decision
+6. Razorpay payment link created
+7. Customer payment confirmed
+8. Order completed
+9. Agent wallet fee deducted
+
+Use:
+
+- Green checkmarks for completed steps
+- Blue animated indicator for the active step
+- Amber warning icon for approval-required steps
+- Red/gray blocked state for escalated steps
+- Muted styling for future steps
+
+Decision explanation panel:
+
+For every order, show a short explanation.
+
+Example:
+
+“Auto-approved because confidence was high, the delivery date was available, and the quote was below ₹5,000.”
+
+Approval-required order:
+
+Show a prominent amber panel:
+
+Human approval required
+
+Reason:
+“This order exceeds the ₹5,000 auto-approval limit.”
+
+Buttons:
+
+- Approve quote
+- Reject order
+
+After clicking Approve quote:
+
+- Disable the button while loading
+- Show “Approval recorded”
+- Add “Baker approved quote” to the activity timeline
+- Reveal “Create payment link”
+- Update the UI without a full page reload
+- Display API errors clearly if the request fails
+
+Escalated order:
+
+Show:
+
+Agent paused safely
+
+Example reason:
+
+“September 15 is already booked. No payment link was created and no wallet fee was charged.”
+
+Awaiting-payment order:
+
+Show:
+
+- Razorpay payment-link card
+- Open payment link button
+- Copy link button
+- Demo-only “Simulate customer payment” button
+- Clear label: “Demo action”
+- Payment status
+
+Completed order:
+
+Show:
+
+Order completed successfully
+
+Include:
+
+- Customer payment amount
+- Delivery date
+- Wallet fee deducted
+- Remaining wallet balance
+- Confirmation message sent
+
+Be honest about fee state:
+
+- In mock mode: “Fee simulated”
+- If the backend only creates a Razorpay Order: “Razorpay order created”
+- Never display “Fee charged” unless money was actually debited
+
+Generative cake design feature:
+
+Add an optional card called:
+
+Create a cake preview
+
+The customer can describe a design:
+
+“Pastel blue birthday cake with football decorations and gold lettering.”
+
+Include:
+
+- Design prompt input
+- Generate preview button
+- Image preview area
+- Approve design button
+- Regenerate button
+
+If image generation is not yet connected, create a clean placeholder state:
+
+“Cake preview will appear here”
+
+Do not fake a successful generated image. Make the feature visually ready for integration.
+
+Agent activity section:
+
+Replace the raw audit log with a readable timeline.
+
+Title:
+
+Agent activity
+
+Each event should show:
+
+- Timestamp
+- Action title
+- One-line explanation
+- Related order
+- Amount, if relevant
+- Wallet effect, if relevant
+
+Examples:
+
+- Request understood
+- Order details extracted
+- Availability checked
+- Pricing rule applied
+- Approval required
+- Baker approved quote
+- Payment link created
+- Customer payment confirmed
+- Order completed
+- ₹5 deducted from agent wallet
+
+Use icons and color-coded event types.
+
+Technical/API requirements:
+
+Continue using the existing API routes:
+
+- GET /api/status
+- POST /api/order
+- GET /api/orders
+- GET /api/audit
+- POST /api/order/:id/approve
+- POST /api/order/:id/send-payment-link
+- POST /api/order/:id/mark-paid
+- GET /api/order/:id/mark-paid
+
+Do not change the API contract unless absolutely necessary.
+
+Important interaction fixes:
+
+- Approval button must call the real approval endpoint.
+- Show loading state while approval is processing.
+- Show a visible error if the API returns an error.
+- Do not silently fail when an API returns HTML or non-JSON.
+- Normal low-value orders should automatically create a payment link.
+- High-value orders must pause for approval.
+- Escalated orders must not create payment links.
+- Payment confirmation must be idempotent.
+- Do not deduct a wallet fee for failed or escalated orders.
+- Do not charge or simulate a wallet fee twice.
+- Keep the existing audit trail.
+- Escape customer-provided text before rendering it.
+- Use semantic HTML and accessible labels.
+- Make buttons keyboard accessible.
+- Disable buttons during network requests.
+- Preserve the current polling/live refresh behavior if present.
+- Add polished toast notifications for success and failure.
+- Add useful empty states.
+
+Empty states:
+
+Orders:
+
+“Your agent is ready.”
+“Send a customer message to start the first workflow.”
+
+Wallet:
+
+“No wallet activity yet.”
+“Add funds to let Cakebot complete paid workflows.”
+
+Activity:
+
+“No agent activity yet.”
+
+Responsive behavior:
+
+On mobile:
+
+- Stack the two-column layout
+- Keep wallet balance visible
+- Make workflow timeline vertical
+- Keep primary actions full width
+- Ensure all text remains readable
+
+Testing checklist:
+
+Test all of these scenarios before finishing:
+
+1. Normal low-value order automatically creates a payment link.
+2. High-value order requires baker approval.
+3. Approval button works and updates the UI.
+4. Approved order can create a payment link.
+5. Payment simulation completes the order.
+6. Wallet fee appears only once after completion.
+7. Repeating payment confirmation does not deduct twice.
+8. Booked date escalates safely.
+9. API failures show a visible error.
+10. Empty states look polished.
+11. The page works on mobile width.
+12. npm start still launches the application.
+
+Before changing files:
+
+- Inspect the existing code.
+- Preserve working backend behavior.
+- Do not invent unsupported API responses.
+- Do not replace Razorpay with another payment provider.
+- Do not add blockchain or cryptocurrency unless explicitly requested.
+- Keep the product story focused on AI-powered commerce and Razorpay payments.
