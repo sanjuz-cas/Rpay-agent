@@ -133,8 +133,8 @@ async function parseOrderWithLLM(message) {
     // The deterministic parser is only trusted when all core fields are explicit.
     const fallback = heuristicParse(message);
     const fallbackItems = fallback.items?.length ? fallback.items : [{ weightKg: fallback.weightKg, flavor: fallback.flavor, date: fallback.date }];
-    const missingFlavorIndex = fallbackItems.findIndex(item => !item.flavor);
-    const complete = Boolean(fallbackItems.length && fallback.date && missingFlavorIndex < 0);
+    const missingFlavorIndex = fallbackItems.findIndex(item => !item.flavor || !item.date || !Number.isFinite(item.weightKg));
+    const complete = Boolean(fallbackItems.length && missingFlavorIndex < 0);
     return {
       items: fallbackItems,
       confidence: complete ? 'high' : missingFlavorIndex >= 0 ? 'needs_customer_input' : 'low',
@@ -149,8 +149,8 @@ async function parseOrderWithLLM(message) {
   console.warn('[llmAgent] No GEMINI_API_KEY or ANTHROPIC_API_KEY set — using deterministic fallback.');
   const fallback = heuristicParse(message);
     const fallbackItems = fallback.items?.length ? fallback.items : [{ weightKg: fallback.weightKg, flavor: fallback.flavor, date: fallback.date }];
-    const missingFlavorIndex = fallbackItems.findIndex(item => !item.flavor);
-    const complete = Boolean(fallbackItems.length && fallback.date && missingFlavorIndex < 0);
+    const missingFlavorIndex = fallbackItems.findIndex(item => !item.flavor || !item.date || !Number.isFinite(item.weightKg));
+    const complete = Boolean(fallbackItems.length && missingFlavorIndex < 0);
     return {
     items: fallbackItems,
     confidence: complete ? 'high' : missingFlavorIndex >= 0 ? 'needs_customer_input' : 'low',
