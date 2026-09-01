@@ -22,19 +22,32 @@ app.post('/api/design-preview', async (req, res) => {
   const prompt = `Professional bakery product photo of a ${flavor} cake. Design: ${design}. Elegant, realistic, appetizing, clean studio lighting, centered composition, premium bakery catalog photography, no people, no brand logos, no watermark.`;
   logAudit({ action: 'TOOL_CALL', tool: 'generate_cake_design', reasoning: `Generating a visual cake preview from the customer design request.` });
   try {
-    const response = await fetch(`https://router.huggingface.co/hf-inference/models/${process.env.IMAGE_MODEL || 'black-forest-labs/FLUX.1-schnell'}`, { method: 'POST', headers: { Authorization: `Bearer ${process.env.HF_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: prompt }) });
+    const imageModel = process.env.IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
+    const response = await fetch(`https://router.huggingface.co/hf-inference/models/${imageModel}`, { method: 'POST', headers: { Authorization: `Bearer ${process.env.HF_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: prompt }) });
     if (!response.ok) throw new Error(`Hugging Face error (${response.status}): ${await response.text()}`);
     const buffer = Buffer.from(await response.arrayBuffer());
     const contentType = response.headers.get('content-type') || 'image/png';
     logAudit({ action: 'DESIGN_PREVIEW_GENERATED', tool: 'generate_cake_design', reasoning: 'Cake preview generated successfully.' });
-    res.json({ image: `data:${contentType};base64,${buffer.toString('base64')}`, provider: 'Hugging Face', model: process.env.IMAGE_MODEL || 'black-forest-labs/FLUX.1-schnell' });
+    res.json({ image: `data:${contentType};base64,${buffer.toString('base64')}`, provider: 'Hugging Face', model: imageModel });
   } catch (err) {
     logAudit({ action: 'DESIGN_PREVIEW_FAILED', tool: 'generate_cake_design', reasoning: err.message });
     res.status(502).json({ error: err.message });
   }
 });
 
-const PER_RUN_FEE = 5; // ₹5 charged to the baker per successfully completed order — the subscription replacement
+async function generateCakePreview(design, flavor = 'celebration cake') {
+  const imageModel = process.env.IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
+  const prompt = `Professional bakery product photo of a ${flavor} cake. Design: ${design}. Elegant, realistic, appetizing, clean studio lighting, centered composition, premium bakery catalog photography, no people, no brand logos, no watermark.`;
+  const response = await fetch(`https://router.huggingface.co/hf-inference/models/${imageModel}`, { method: 'POST', headers: { Authorization: `Bearer ${process.env.HF_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ inputs: prompt }) });
+  if (!response.ok) throw new Error(`Hugging Face error (${response.status}): ${await response.text()}`);
+  const buffer = Buffer.from(await response.arrayBuffer());
+  return { image: `data:${response.headers.get('content-type') || 'image/png'};base64,${buffer.toString('base64')}`, model: imageModel, prompt };
+}
+
+const BASE_RUN_FEE = 5;
+const DESIGN_PREVIEW_FEE = 10;
+const DESIGN_REVISION_FEE = 5;
+const DEFAULT_IMAGE_MODEL = 'stabilityai/stable-diffusion-3-medium-diffusers';
 
 function validateOrderItems(items) {
   if (!Array.isArray(items) || items.length === 0 || items.length > 20) return 'At least one and at most 20 cake items are required.';
@@ -50,12 +63,17 @@ function walletSnapshot() {
   return { balance: wallet.balance, transactions: wallet.transactions.slice().reverse() };
 }
 
+function orderUsageFee(order) {
+  return BASE_RUN_FEE + (order.designPreview?.status === 'approved' ? DESIGN_PREVIEW_FEE + Math.max(0, Number(order.designPreview.revisions || 0)) * DESIGN_REVISION_FEE : 0);
+}
+
 function debitWallet(order) {
+  const feeAmount = orderUsageFee(order);
   if (wallet.debitedOrders.has(order.id)) return false;
-  if (wallet.balance < PER_RUN_FEE) throw new Error('Insufficient agent wallet balance. Add funds before completing this order.');
-  wallet.balance -= PER_RUN_FEE;
+  if (wallet.balance < feeAmount) throw new Error(`Insufficient agent wallet balance. Add ₹${feeAmount} before completing this order.`);
+  wallet.balance -= feeAmount;
   wallet.debitedOrders.add(order.id);
-  wallet.transactions.push({ id: `fee_${order.id}`, orderId: order.id, amount: -PER_RUN_FEE, type: 'debit', label: 'Cake order completed', meta: 'Agent fee recorded after successful payment', createdAt: new Date().toISOString() });
+  wallet.transactions.push({ id: `fee_${order.id}`, orderId: order.id, amount: -feeAmount, type: 'debit', label: 'Cake order completed', meta: `Agent fee: ₹${BASE_RUN_FEE} automation${order.designPreview?.status === 'approved' ? ` + ₹${DESIGN_PREVIEW_FEE} design preview` : ''}`, createdAt: new Date().toISOString() });
   return true;
 }
 
@@ -78,6 +96,9 @@ app.post('/api/order', async (req, res) => {
     const validationError = validateOrderItems(decision.parsed.items);
     if (validationError) decision = { decision: 'ESCALATE', reasoning: `Order validation failed: ${validationError}`, parsed: decision.parsed, requiresHuman: true, trace: [{ action: 'HITL_REQUESTED', audience: 'baker', reasoning: validationError }] };
   }
+  if (decision.decision === 'AUTO_APPROVED' && decision.parsed?.items?.some(item => item.design)) {
+    decision = { ...decision, decision: 'DESIGN_REVIEW', reasoning: `${decision.reasoning} A custom design was requested, so a preview must be approved before payment.` };
+  }
 
   const order = {
     id: orderId,
@@ -94,6 +115,7 @@ app.post('/api/order', async (req, res) => {
     action: decision.decision,
     reasoning: decision.reasoning,
     amount: decision.amount || null,
+    customerTotal: decision.amount || null,
   });
   for (const event of decision.trace || []) logAudit({ orderId, ...event });
 
@@ -102,7 +124,7 @@ app.post('/api/order', async (req, res) => {
     try {
       const link = await createCustomerPaymentLink({
         orderId: order.id,
-        amount: order.amount,
+        amount: order.customerTotal || order.amount,
         customerName: order.customerName,
         description: order.itemsSummary,
       });
@@ -118,6 +140,42 @@ app.post('/api/order', async (req, res) => {
   res.json(order);
 });
 
+app.post('/api/order/:id/design-preview', async (req, res) => {
+  const order = orders.get(req.params.id);
+  const design = String(req.body?.design || '').trim();
+  if (!order) return res.status(404).json({ error: 'order not found' });
+  if (!design) return res.status(400).json({ error: 'design description is required' });
+  if (!process.env.HF_TOKEN) return res.status(503).json({ error: 'HF_TOKEN is not configured.' });
+  try {
+    const preview = await generateCakePreview(design, order.parsed?.items?.[0]?.flavor || 'celebration cake');
+    order.designPreview = { ...preview, design, status: 'generated', revisions: order.designPreview?.status ? Number(order.designPreview.revisions || 0) + 1 : 0, generatedAt: new Date().toISOString() };
+    order.customerTotal = order.amount + DESIGN_PREVIEW_FEE;
+    orders.set(order.id, order);
+    logAudit({ orderId: order.id, action: 'DESIGN_PREVIEW_GENERATED', tool: 'generate_cake_design', reasoning: `Generated optional design preview. Customer add-on: ₹${DESIGN_PREVIEW_FEE}.`, amount: DESIGN_PREVIEW_FEE });
+    res.json(order);
+  } catch (err) { logAudit({ orderId: order.id, action: 'DESIGN_PREVIEW_FAILED', reasoning: err.message }); res.status(502).json({ error: err.message }); }
+});
+
+app.post('/api/order/:id/design-approve', (req, res) => {
+  const order = orders.get(req.params.id);
+  if (!order?.designPreview?.image) return res.status(400).json({ error: 'Generate a design preview first.' });
+  order.designPreview.status = 'approved';
+  order.customerTotal = order.amount + DESIGN_PREVIEW_FEE;
+  orders.set(order.id, order);
+  logAudit({ orderId: order.id, action: 'DESIGN_APPROVED', reasoning: `Customer approved the design add-on. Customer total is ₹${order.customerTotal}.`, amount: DESIGN_PREVIEW_FEE });
+  res.json(order);
+});
+
+app.post('/api/order/:id/design-reject', (req, res) => {
+  const order = orders.get(req.params.id);
+  if (!order?.designPreview) return res.status(400).json({ error: 'No design preview exists.' });
+  order.designPreview.status = 'rejected';
+  order.customerTotal = order.amount;
+  orders.set(order.id, order);
+  logAudit({ orderId: order.id, action: 'DESIGN_REJECTED', reasoning: 'Design preview rejected; no design add-on was charged.' });
+  res.json(order);
+});
+
 // 2. Baker (or auto-approval) confirms -> agent sends the customer a Razorpay payment link
 app.post('/api/order/:id/send-payment-link', async (req, res) => {
   const order = orders.get(req.params.id);
@@ -129,7 +187,7 @@ app.post('/api/order/:id/send-payment-link', async (req, res) => {
     logAudit({ orderId: order.id, action: 'TOOL_CALL', tool: 'create_razorpay_payment_link', reasoning: 'Creating a customer payment link after approval.' });
     const link = await createCustomerPaymentLink({
       orderId: order.id,
-      amount: order.amount,
+      amount: order.customerTotal || order.amount,
       customerName: order.customerName,
       description: order.itemsSummary || `${order.parsed?.weightKg}kg ${order.parsed?.flavor} cake`,
     });
@@ -209,17 +267,18 @@ async function markPaid(req, res) {
 
   try {
     logAudit({ orderId: order.id, action: 'TOOL_CALL', tool: 'verify_customer_payment', reasoning: 'Confirming payment before completing the order.' });
-    const fee = await chargePerRunFee({ orderId: order.id, feeAmount: PER_RUN_FEE });
+    const feeAmount = orderUsageFee(order);
+    const fee = await chargePerRunFee({ orderId: order.id, feeAmount });
     debitWallet(order);
-    order.perRunFeeCharged = PER_RUN_FEE;
+    order.perRunFeeCharged = feeAmount;
     order.feeMode = fee.mock ? 'simulated' : 'order-created';
     orders.set(order.id, order);
 
     logAudit({
       orderId: order.id,
       action: 'PER_RUN_FEE_CHARGED',
-      reasoning: `Agent completed the order-to-payment loop. Recorded a ₹${PER_RUN_FEE} usage fee in the merchant wallet.`,
-      amount: PER_RUN_FEE,
+      reasoning: `Agent completed the order-to-payment loop. Recorded a ₹${feeAmount} usage fee in the merchant wallet.`,
+    amount: orderUsageFee(order),
     });
 
     res.json({ order, fee });
@@ -264,7 +323,7 @@ app.post('/api/order/:id/customer-reply', async (req, res) => {
     logAudit({ orderId: order.id, action: 'CUSTOMER_REPLY_RECEIVED', audience: 'customer', reasoning: `Customer clarification received: ${reply}` });
     for (const event of decision.trace || []) logAudit({ orderId: order.id, ...event });
     if (decision.decision === 'AUTO_APPROVED') {
-      const link = await createCustomerPaymentLink({ orderId: order.id, amount: order.amount, customerName: order.customerName, description: order.itemsSummary });
+      const link = await createCustomerPaymentLink({ orderId: order.id, amount: order.customerTotal || order.amount, customerName: order.customerName, description: order.itemsSummary });
       order.paymentLink = link.short_url;
       order.status = 'awaiting_payment';
       orders.set(order.id, order);
@@ -298,7 +357,9 @@ app.get('/api/status', (req, res) => {
   res.json({
     razorpayMode: hasKeys ? 'live-test-mode' : 'mock',
     llmMode: activeProvider(),
-    perRunFee: PER_RUN_FEE,
+    perRunFee: BASE_RUN_FEE,
+    designPreviewFee: DESIGN_PREVIEW_FEE,
+    designRevisionFee: DESIGN_REVISION_FEE,
   });
 });
 
