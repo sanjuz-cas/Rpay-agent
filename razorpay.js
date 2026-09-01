@@ -1,4 +1,5 @@
 const Razorpay = require('razorpay');
+const crypto = require('crypto');
 
 const hasKeys = process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET;
 
@@ -66,4 +67,13 @@ async function chargePerRunFee({ orderId, feeAmount = 5 }) {
   });
 }
 
-module.exports = { createCustomerPaymentLink, chargePerRunFee, hasKeys };
+function verifyWebhookSignature(rawBody, signature) {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  if (!secret || !signature) return false;
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  const actual = Buffer.from(String(signature));
+  const expectedBuffer = Buffer.from(expected);
+  return actual.length === expectedBuffer.length && crypto.timingSafeEqual(actual, expectedBuffer);
+}
+
+module.exports = { createCustomerPaymentLink, chargePerRunFee, verifyWebhookSignature, hasKeys };

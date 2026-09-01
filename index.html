@@ -429,7 +429,7 @@
         <article class="card wallet-card">
           <div class="wallet-top"><div><div class="wallet-label">Agent wallet <span style="color:#f6bd63;">• demo balance</span></div><div id="walletBalance" class="wallet-balance">₹250.00</div><div class="wallet-status">Available balance · in-memory demo state</div></div><div aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#91a5c0" stroke-width="1.4"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H20v14H6.5A2.5 2.5 0 0 1 4 16.5v-9Z"/><path d="M4 8h16M15 12h2"/></svg></div></div>
           <div class="wallet-actions"><button class="button secondary" type="button" data-action="add-funds">Add funds</button><button class="button secondary" type="button" data-action="view-transactions">View transactions</button></div>
-          <div class="wallet-rules"><div class="wallet-rule">₹5 deducted only after successful completion</div><div class="wallet-rule">Wallet funded through Razorpay</div><div class="wallet-rule">No charge for failed or escalated requests</div></div>
+          <div class="wallet-rules"><div class="wallet-rule">₹5 deducted only after successful completion</div><div class="wallet-rule">Wallet credits are simulated in this demo</div><div class="wallet-rule">No charge for failed or escalated requests</div></div>
           <div id="walletWarning" class="wallet-warning" hidden>Balance is getting low. Add funds before your next completed run.</div>
         </article>
         <article class="card activity-card" id="transactions">
@@ -727,7 +727,7 @@
       if (action === 'approve') orderAction(id, 'approve', 'Approval recorded.');
       if (action === 'reject') orderAction(id, 'reject', 'Quote declined safely.');
       if (action === 'send-link') orderAction(id, 'send-payment-link', 'Razorpay payment link created.');
-      if (action === 'mark-paid') orderAction(id, 'mark-paid', 'Customer payment simulated and order completed.');
+      if (action === 'mark-paid') orderAction(id, 'simulate-payment', 'Customer payment simulated and order completed.');
       if (action === 'customer-reply') {
         const input = document.getElementById(`reply-${id}`);
         const message = input?.value.trim();

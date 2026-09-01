@@ -97,7 +97,7 @@ customer message → agent.decideOnOrder()
 ## Next steps if this goes further
 
 - Swap the regex parser for a real LLM call for order intake.
-- Real Razorpay webhook verification (signature check) instead of the
-  manual "mark paid" trigger.
+- Razorpay webhook verification is available at `/api/webhooks/razorpay`; the
+  UI's `simulate-payment` action remains clearly demo-only.
 - Generalize beyond cake orders to other single-operator services
   (tailoring, tutoring, home catering) using the same gated-agent pattern.

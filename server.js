@@ -6,10 +6,11 @@ const path = require('path');
 
 const { orders, auditLog, bookedDates, wallet, logAudit } = require('./store');
 const { decideOnOrder } = require('./agent');
-const { createCustomerPaymentLink, chargePerRunFee, hasKeys } = require('./razorpay');
+const { createCustomerPaymentLink, chargePerRunFee, verifyWebhookSignature, hasKeys } = require('./razorpay');
 
 const app = express();
 app.use(cors());
+app.use('/api/webhooks/razorpay', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(express.static(__dirname));
 
@@ -34,6 +35,16 @@ app.post('/api/design-preview', async (req, res) => {
 });
 
 const PER_RUN_FEE = 5; // ₹5 charged to the baker per successfully completed order — the subscription replacement
+
+function validateOrderItems(items) {
+  if (!Array.isArray(items) || items.length === 0 || items.length > 20) return 'At least one and at most 20 cake items are required.';
+  for (const item of items) {
+    if (!Number.isFinite(item.weightKg) || item.weightKg <= 0 || item.weightKg > 100) return 'Each cake weight must be between 0 and 100kg.';
+    if (!item.flavor || typeof item.flavor !== 'string') return 'Each cake must have a flavor.';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(item.date) || Number.isNaN(Date.parse(`${item.date}T00:00:00Z`))) return 'Each cake must have a valid delivery date.';
+  }
+  return null;
+}
 
 function walletSnapshot() {
   return { balance: wallet.balance, transactions: wallet.transactions.slice().reverse() };
@@ -61,6 +72,11 @@ app.post('/api/order', async (req, res) => {
   } catch (err) {
     logAudit({ orderId, action: 'PARSE_FAILED', reasoning: err.message });
     return res.status(502).json({ error: `Agent parsing failed: ${err.message}` });
+  }
+
+  if (decision.parsed?.confidence === 'high') {
+    const validationError = validateOrderItems(decision.parsed.items);
+    if (validationError) decision = { decision: 'ESCALATE', reasoning: `Order validation failed: ${validationError}`, parsed: decision.parsed, requiresHuman: true, trace: [{ action: 'HITL_REQUESTED', audience: 'baker', reasoning: validationError }] };
   }
 
   const order = {
@@ -106,9 +122,8 @@ app.post('/api/order', async (req, res) => {
 app.post('/api/order/:id/send-payment-link', async (req, res) => {
   const order = orders.get(req.params.id);
   if (!order) return res.status(404).json({ error: 'order not found' });
-  if (order.status === 'escalated') {
-    return res.status(400).json({ error: 'This order was escalated and needs manual resolution first.' });
-  }
+  if (order.status !== 'quoted') return res.status(409).json({ error: 'Order is not ready for payment.' });
+  if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return res.status(403).json({ error: 'Baker approval is required.' });
 
   try {
     logAudit({ orderId: order.id, action: 'TOOL_CALL', tool: 'create_razorpay_payment_link', reasoning: 'Creating a customer payment link after approval.' });
@@ -140,7 +155,7 @@ app.post('/api/order/:id/send-payment-link', async (req, res) => {
 app.post('/api/order/:id/approve', (req, res) => {
   const order = orders.get(req.params.id);
   if (!order) return res.status(404).json({ error: 'order not found' });
-  if (order.decision !== 'PENDING_APPROVAL') return res.status(400).json({ error: 'This order does not require approval.' });
+  if (order.decision !== 'PENDING_APPROVAL' || order.status !== 'quoted' || order.rejectedByBaker) return res.status(400).json({ error: 'This order does not require approval.' });
   order.status = 'quoted';
   order.approvedByBaker = true;
   orders.set(order.id, order);
@@ -214,8 +229,18 @@ async function markPaid(req, res) {
   }
 }
 
-app.post('/api/order/:id/mark-paid', markPaid);
-app.get('/api/order/:id/mark-paid', markPaid);
+app.post('/api/order/:id/simulate-payment', markPaid);
+
+app.post('/api/webhooks/razorpay', (req, res) => {
+  if (!verifyWebhookSignature(req.body, req.get('x-razorpay-signature'))) return res.status(401).json({ error: 'Invalid Razorpay webhook signature.' });
+  let event;
+  try { event = JSON.parse(req.body.toString('utf8')); } catch { return res.status(400).json({ error: 'Invalid webhook payload.' }); }
+  if (event.event !== 'payment_link.paid') return res.json({ received: true, ignored: true });
+  const orderId = event.payload?.payment_link?.entity?.reference_id;
+  if (!orderId || !orders.has(orderId)) return res.status(404).json({ error: 'Referenced order not found.' });
+  req.params.id = orderId;
+  return markPaid(req, res);
+});
 
 app.get('/api/orders', (req, res) => {
   res.json([...orders.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
