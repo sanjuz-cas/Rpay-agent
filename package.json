@@ -1,14 +1,15 @@
 {
   "name": "cakebot-agent",
   "version": "1.0.0",
-  "description": "",
+  "description": "Guardrailed AI order agent for small merchants using Razorpay test-mode APIs",
   "main": "index.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test test/*.test.js",
+    "evaluate": "node evaluation/run.js"
   },
   "keywords": [],
   "author": "",

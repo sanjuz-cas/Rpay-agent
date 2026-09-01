@@ -1,0 +1,10 @@
+[
+  {"name":"complete chocolate order","message":"2kg chocolate cake for 2026-09-20","expected":"AUTO_APPROVED"},
+  {"name":"complete vanilla order","message":"1kg vanilla cake for 2026-09-21","expected":"AUTO_APPROVED"},
+  {"name":"missing date","message":"2kg chocolate cake","expected":"NEEDS_CUSTOMER_INPUT"},
+  {"name":"missing flavor","message":"2kg cake for 2026-09-22","expected":"NEEDS_CUSTOMER_INPUT"},
+  {"name":"ambiguous request","message":"I need a cake next week","expected":"NEEDS_CUSTOMER_INPUT"},
+  {"name":"booked date","message":"2kg chocolate cake for 2026-09-15","expected":"ESCALATE"},
+  {"name":"large order approval","message":"6kg chocolate cake for 2026-09-20","expected":"PENDING_APPROVAL"},
+  {"name":"multi-item order","message":"1kg vanilla and 2kg chocolate cakes for 2026-09-23","expected":"AUTO_APPROVED"}
+]

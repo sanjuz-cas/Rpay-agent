@@ -1,103 +1,78 @@
-# Cakebot Agent — pay-per-run micro-agents for small merchants
+# Cakebot Agent
 
-**Track:** AI Growth & Agentic Commerce (Razorpay AI Buildathon)
+Cakebot is a guardrailed AI order agent for small bakeries. It turns a customer message into a priced cake order, checks availability, requests human approval when needed, creates a Razorpay Payment Link, and records an explainable audit trail.
 
-A working demo of an AI agent that runs a small merchant's order workflow
-end-to-end and charges the merchant a small fee only for completed runs —
-no monthly subscription. Built on Razorpay's Payment Links and Orders APIs.
+**Razorpay AI Buildathon track:** AI Growth & Agentic Commerce
 
-This scopes down a broader idea (usage-based micro-payments for AI agent
-skills, previously built as **Algogent**, an Algorand-based agent
-marketplace that won First Prize at Uniq) into one concrete, working loop
-on Razorpay's rails.
+## Why this is a strong fit
 
-## The loop
+- AI extracts multiple cake items and separates flavor from design.
+- Deterministic policy code controls pricing, availability, and the ₹5,000 auto-approval limit.
+- Ambiguous requests go back to the customer; conflicts and risky orders go to the baker.
+- Razorpay Payment Links make the bakery transactable.
+- `/api/audit` records model output, tool calls, policy decisions, approvals, failures, and payment events.
+- The UI demonstrates normal, ambiguous, over-limit, and double-booked flows.
 
-1. A customer sends the baker's agent a message ("2kg chocolate cake for
-   2026-09-20").
-2. The agent parses the request, checks the baker's availability, and
-   quotes a price.
-3. **Gating on model confidence:** the parser (a real Gemini or Claude API
-   call, see `lib/llmAgent.js`) is asked to self-report confidence on the
-   extracted weight/flavor/date. Low-confidence parses are escalated to the
-   baker rather than acted on — the agent doesn't guess when the model
-   itself is unsure.
-4. **Gating on amount:** quotes above ₹5,000 are held for the baker's
-   approval instead of auto-sending a payment link.
-5. **Escalation on conflict:** if the requested date conflicts with an
-   existing booking, the agent escalates to the baker with a clear reason
-   instead of auto-rescheduling. This is the failure case demoed live.
-5. On approval, the agent creates a Razorpay Payment Link and sends it to
-   the customer.
-6. When the customer pays, the order is confirmed — **and the agent
-   charges the baker a flat ₹5 completion fee via Razorpay**, instead of
-   a monthly subscription. The baker only pays for work actually done.
-7. Every step above is written to an audit trail (`/api/audit`) with a
-   timestamp, the action taken, and the agent's stated reasoning — so
-   every money-touching action is explainable after the fact.
+The LLM is used for extraction and explanation. It never directly decides whether money may move.
 
-## Why this fits the brief
-
-- **Bounded and gated:** the approval threshold and availability check are
-  hard limits the agent cannot bypass — visible in the code and in the UI.
-- **Audit trail:** `/api/audit` is not a log dump; each entry is the
-  agent's actual decision record.
-- **One failure handled gracefully:** the double-booking case, demoed live
-  rather than described.
-- **Real differentiator:** the per-run fee (step 6) replaces a
-  subscription model with pay-for-completed-work, which is the same
-  mechanic proven in Algogent but applied to Razorpay's merchant rails.
-
-## Running it
+## Run locally
 
 ```bash
 npm install
-cp .env.example .env   # add Razorpay TEST MODE keys + a GEMINI_API_KEY (free)
+cp .env.example .env
 npm start
 ```
 
-Then open `http://localhost:3000`. Without a model key (Gemini or
-Anthropic), fully explicit requests (weight, flavor, and an ISO delivery date)
-use a deterministic parser; incomplete requests are escalated for review.
-Without Razorpay keys, payments run in mock mode. Add both to see the full
-live loop. Gemini is checked first since it has a
-free tier with no credit card required — get a key at
-[aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+Add Razorpay test-mode keys and optionally `GEMINI_API_KEY` or `ANTHROPIC_API_KEY`. With no keys, the app runs with clearly labelled mock payment behavior and a deterministic parser.
 
-## What's simulated vs real
+## Verify the project
 
-- **Real:** order intake runs on an actual Gemini or Claude API call (`llmAgent.js`)
-  that extracts structured order data and self-reports confidence; Razorpay
-  Payment Link creation; Razorpay Order creation for the per-run fee; the
-  full decision/gating/escalation logic.
-- **Simulated for the demo:** the UI can manually trigger customer payment;
-  the same route also accepts Razorpay's payment-link callback. The ₹5
-  merchant fee is simulated in mock mode; with Razorpay keys the demo creates
-  a Razorpay Order, but production billing would require a mandate or saved
-  payment method.
-Without `ANTHROPIC_API_KEY` set, order parsing uses a deterministic heuristic
-for requests whose weight, flavor, and date are explicit. Requests with
-missing or ambiguous fields remain low-confidence and escalate safely.
+```bash
+npm test
+npm run evaluate
+```
+
+The tests cover pricing, missing information, scheduling conflicts, approval gating, and autonomous approval. The evaluation runner executes the cases in `evaluation/cases.json` and reports accuracy plus per-decision results. These are deterministic smoke-test metrics, not a claim of production model accuracy.
+
+## Payment honesty
+
+Customer payment links are real Razorpay test-mode calls when configured. The UI's “simulate payment” control is demo-only; production confirmation comes from the signed `payment_link.paid` webhook.
+
+The merchant usage fee is represented by the in-memory wallet in this submission. In Razorpay test mode, the app creates an Order for the fee but does not actually debit a saved merchant payment method. A production version would collect that fee through an authorised mandate, saved payment method, or an explicit merchant checkout. No live money is moved by this demo.
 
 ## Architecture
 
-```
-customer message → agent.decideOnOrder()
-                         ├─ ESCALATE (conflict) → human review, no charge
-                         ├─ PENDING_APPROVAL (>₹5000) → baker confirms
-                         └─ AUTO_APPROVED → Razorpay payment link sent
-                                                  ↓ customer pays
-                                          order confirmed
-                                                  ↓
-                                    Razorpay per-run fee charged to baker
-                                                  ↓
-                                          audit trail entry
+```text
+customer message
+      ↓
+LLM/heuristic extraction → missing fields → customer clarification
+      ↓
+deterministic policy engine
+  ├─ unavailable date → baker escalation
+  ├─ quote > ₹5,000 → baker approval
+  └─ guardrails pass → Razorpay Payment Link
+                                  ↓
+                         signed payment webhook
+                                  ↓
+                    confirm order + record demo fee
+                                  ↓
+                            audit trail
 ```
 
-## Next steps if this goes further
+## Submission demo script
 
-- Swap the regex parser for a real LLM call for order intake.
-- Razorpay webhook verification is available at `/api/webhooks/razorpay`; the
-  UI's `simulate-payment` action remains clearly demo-only.
-- Generalize beyond cake orders to other single-operator services
-  (tailoring, tutoring, home catering) using the same gated-agent pattern.
+1. Submit `2kg chocolate cake for 2026-09-20`; show autonomous quote and payment link.
+2. Submit `I need a cake next week`; show customer clarification.
+3. Submit `2kg chocolate cake for 2026-09-15`; show baker escalation for the booked date.
+4. Submit `6kg chocolate cake for 2026-09-20`; show the ₹5,000 approval gate.
+5. Complete one mock payment and open the audit trail and wallet ledger.
+
+## Project structure
+
+- `agent.js` — extraction orchestration, pricing, availability, and policy decisions.
+- `llmAgent.js` — Gemini/Claude JSON extraction with safe fallback behavior.
+- `razorpay.js` — Payment Link, test Order, and webhook signature helpers.
+- `server.js` — API routes and in-memory demo state.
+- `index.html` — merchant dashboard and workflow demo.
+- `test/agent.test.js` — automated guardrail tests.
+- `evaluation/cases.json` and `evaluation/run.js` — reproducible decision benchmark.

@@ -16,7 +16,7 @@ const PRICING = {
 const AUTO_APPROVE_LIMIT = 5000;
 
 /**
- * Order intake now runs on a real model call (see lib/llmAgent.js), not
+ * Order intake now runs on a real model call (see llmAgent.js), not
  * regex. The model is asked to self-report confidence — low-confidence
  * parses are escalated rather than acted on, which ties the "bounded and
  * gated" behavior to actual model uncertainty instead of a fixed rule.
