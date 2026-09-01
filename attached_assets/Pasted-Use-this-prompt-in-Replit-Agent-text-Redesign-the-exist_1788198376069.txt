@@ -1,0 +1,483 @@
+Use this prompt in Replit Agent:
+
+```text
+Redesign the existing Cakebot frontend from scratch with a modern, premium SaaS product experience.
+
+The current UI feels like a long static dashboard. Replace it with a focused, polished workflow interface that feels closer to Linear, Stripe Dashboard, Apple, and modern AI products.
+
+Do not rewrite the backend. Preserve all existing Express routes, API behavior, wallet logic, approval logic, image generation, audit trail, and payment flow.
+
+Run the application with:
+
+npm start
+
+Product positioning:
+
+Cakebot is an AI commerce employee for small bakeries. It understands customer messages, asks clarifying questions, checks business rules, generates cake design previews, creates Razorpay payment links, waits for payment, confirms orders, and records usage fees.
+
+The interface must make the agent feel active, intelligent, transparent, and trustworthy.
+
+Design principles:
+
+- Premium minimalist visual design
+- Strong visual hierarchy
+- Generous whitespace
+- Responsive desktop and mobile layout
+- Dark navy text on warm-white background
+- Soft blue primary accent
+- Warm coral accent for cake/design features
+- Green for completed actions
+- Amber for approvals and missing information
+- Red only for failures
+- Rounded 16–20px cards
+- Very subtle shadows and borders
+- Modern typography using Inter, Geist, or system SF Pro fonts
+- Smooth transitions around 150–200ms
+- Avoid dense admin tables
+- Avoid excessive pills and badges
+- Avoid unnecessary gradients
+- Avoid emoji-heavy UI
+- Use professional SVG icons
+- Make the product look investor-ready
+
+Create a new app shell.
+
+1. Sidebar navigation
+
+Desktop sidebar:
+
+- Cakebot logo and wordmark
+- Overview
+- Orders
+- Design studio
+- Agent activity
+- Wallet
+- Settings
+
+Bottom of sidebar:
+
+- “Agent online”
+- “Razorpay test mode”
+- Merchant profile: Priya’s Bakery
+
+On mobile, replace the sidebar with a compact top navigation and bottom navigation.
+
+2. Top header
+
+Show:
+
+- Current page title
+- Short contextual subtitle
+- Search or command button
+- Notification icon
+- Merchant avatar
+
+Add a command-style button:
+
+```text
+Ask Cakebot anything
+```
+
+This can open a small command panel with example actions:
+
+- Create an order
+- Generate a cake preview
+- Check availability
+- View pending approvals
+- View wallet transactions
+
+3. Overview page
+
+Hero section:
+
+Heading:
+
+Your bakery, on autopilot.
+
+Subtitle:
+
+Cakebot turns customer conversations into paid, confirmed orders while keeping you in control of risky decisions.
+
+Primary button:
+
+Test the agent
+
+Secondary button:
+
+View orders
+
+Show four clean metrics:
+
+- Revenue collected
+- Completed orders
+- Pending approvals
+- Agent wallet balance
+
+Show a prominent “Live agent workflow” card with a horizontal flow:
+
+```text
+Customer message → Understand → Check rules → Decide → Collect payment → Complete
+```
+
+Highlight the current active step.
+
+4. Agent simulator page
+
+Create a proper split-screen experience.
+
+Left side: customer conversation
+
+Make it look like a polished messaging interface.
+
+Include:
+
+- Customer name
+- Conversation history
+- Customer message bubble
+- Cakebot response bubble
+- Typing/loading state
+- Message composer
+- Send button
+
+Example chips:
+
+- “2kg chocolate cake for September 20”
+- “Create a football cake preview”
+- “This date is already booked”
+- “I need to cancel my order”
+
+Right side: agent execution panel
+
+Title:
+
+Cakebot is working
+
+Show a live event stream:
+
+```text
+Planning next step
+✓ Extracted order details
+✓ Checked availability
+✓ Calculated quote
+⚠ Waiting for customer input
+○ Create Razorpay payment link
+○ Confirm payment
+○ Record wallet fee
+```
+
+Each event must show:
+
+- Status icon
+- Tool name when applicable
+- Short explanation
+- Timestamp
+
+Examples:
+
+```text
+extract_order_details()
+check_availability()
+calculate_price()
+generate_cake_design()
+create_razorpay_payment_link()
+verify_customer_payment()
+record_wallet_fee()
+```
+
+Make tool calls visually distinct from human-in-the-loop events.
+
+5. Orders page
+
+Use a clean list of order cards with filters:
+
+- All
+- Needs attention
+- Awaiting payment
+- Completed
+- Escalated
+
+Each order card should show:
+
+- Customer avatar and name
+- Original customer message
+- Order items
+- Delivery date
+- Quote
+- Current status
+- Agent fee state
+- Last activity
+
+Clicking an order should open a right-side detail drawer rather than navigating away.
+
+Order detail drawer:
+
+- Customer conversation
+- Agent decision
+- Full workflow timeline
+- Tool calls
+- Audit events
+- Payment link
+- Wallet fee
+- Available actions
+
+Workflow states:
+
+```text
+Request received
+Understanding request
+Customer clarification needed
+Availability checked
+Approval required
+Baker approved
+Design preview generated
+Payment link created
+Payment received
+Order completed
+Wallet fee recorded
+Escalated safely
+```
+
+6. Human-in-the-loop experience
+
+Make human input feel like a first-class part of the product.
+
+For customer clarification:
+
+Show an amber card:
+
+```text
+Waiting for customer information
+
+Question:
+What flavor would you like for the 1kg football-themed cake?
+
+[Reply as customer]
+```
+
+For baker approval:
+
+Show:
+
+```text
+Your approval is needed
+
+Reason:
+This ₹18,000 order exceeds the ₹5,000 auto-approval limit.
+
+[Approve quote] [Reject order]
+```
+
+For availability conflicts:
+
+Show:
+
+```text
+Agent paused safely
+
+September 15 is already booked. No payment link was created.
+
+[Suggest another date]
+```
+
+Buttons must:
+
+- Show loading state
+- Disable during requests
+- Update without page reload
+- Show clear success/error toast messages
+
+7. Design studio page
+
+Create a polished cake image-generation workspace.
+
+Left panel:
+
+- Design prompt input
+- Flavor
+- Cake size
+- Theme
+- Color palette
+- Text on cake
+- Generate preview button
+
+Right panel:
+
+- Large generated image canvas
+- Loading skeleton during generation
+- Empty state before generation
+- Error state if provider fails
+- Provider/model label
+- Buttons:
+  - Regenerate
+  - Approve design
+  - Use in order
+
+When the customer explicitly asks for a design, Cakebot should create a design task and show:
+
+```text
+generate_cake_design()
+```
+
+Do not fake an image. Use the real `/api/design-preview` endpoint and display the actual response image.
+
+8. Wallet page
+
+Create a premium wallet experience.
+
+Show:
+
+- Current balance
+- Add funds button
+- Total usage this month
+- Number of completed paid workflows
+- “No charge until valuable work is completed”
+
+Show a transaction timeline:
+
+```text
++ ₹500   Wallet top-up
+- ₹5     Cake order completed
+- ₹5     Design workflow completed
+```
+
+Clearly label demo behavior where applicable.
+
+Use the real:
+
+```text
+GET /api/wallet
+POST /api/wallet/top-up
+```
+
+Do not calculate wallet balance from frontend order counts.
+
+9. Agent activity page
+
+Replace raw audit logs with a professional observability timeline.
+
+Each event should include:
+
+- Event type
+- Tool name
+- Audience
+- Order ID
+- Explanation
+- Amount
+- Timestamp
+
+Use separate visual styles for:
+
+- Agent reasoning
+- Tool calls
+- Policy decisions
+- Customer input requests
+- Baker approvals
+- Payment events
+- Wallet events
+- Errors
+
+Include filters:
+
+- All
+- Tool calls
+- Human input
+- Payments
+- Wallet
+- Errors
+
+10. Empty, loading, and error states
+
+Create polished states for every section.
+
+Examples:
+
+Empty orders:
+
+```text
+Your agent is ready.
+Send a customer message to start a workflow.
+```
+
+Loading:
+
+```text
+Cakebot is thinking…
+```
+
+Image generation:
+
+```text
+Creating a visual cake concept…
+```
+
+Error:
+
+```text
+Cakebot could not complete this step.
+The payment provider or AI service may be temporarily unavailable.
+```
+
+Never silently fail.
+
+11. API requirements
+
+Preserve and use the existing routes:
+
+- GET /api/status
+- POST /api/order
+- GET /api/orders
+- GET /api/audit
+- POST /api/order/:id/approve
+- POST /api/order/:id/reject
+- POST /api/order/:id/customer-reply
+- POST /api/order/:id/send-payment-link
+- POST /api/order/:id/mark-paid
+- GET /api/order/:id/mark-paid
+- GET /api/wallet
+- POST /api/wallet/top-up
+- POST /api/design-preview
+
+Do not hardcode fake order data.
+
+12. Interaction quality
+
+- Use event delegation or clean component-style functions.
+- Escape all user-provided text.
+- Preserve the actual API response.
+- Support keyboard navigation.
+- Add accessible labels.
+- Add confirmation for reject/refund-like actions.
+- Prevent duplicate clicks.
+- Keep polling/live refresh working.
+- Keep the app fast and lightweight.
+- Do not introduce unnecessary dependencies unless required.
+- Keep vanilla JavaScript if the current project uses vanilla JavaScript.
+
+13. Critical product behavior
+
+- Normal low-value orders can proceed automatically.
+- High-value orders require baker approval.
+- Missing customer information asks the customer, not the baker.
+- Design requests call the real image-generation endpoint.
+- Booked dates escalate safely.
+- No payment link is created when required information is missing.
+- No wallet fee is recorded before payment completion.
+- Payment confirmation and wallet deduction are idempotent.
+- Every action appears in the agent activity stream.
+
+Before finishing:
+
+- Inspect the current code before editing.
+- Preserve the backend.
+- Test all API actions.
+- Test normal order, approval, customer clarification, design generation, payment simulation, booked date escalation, wallet top-up, and error states.
+- Run `npm start`.
+- Make sure there are no console errors.
+- Make the final design visually cohesive, not just individually styled sections.
+```
+
+Add this if Replit produces another generic dashboard:
+
+```text
+Do not merely restyle the existing cards. Redesign the information architecture and interaction model. The primary experience should be a live AI workflow and conversation, with orders and wallet supporting that workflow.
+```
