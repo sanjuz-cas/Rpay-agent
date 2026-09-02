@@ -1,0 +1,188 @@
+{
+  "orders": [
+    {
+      "id": "d2EeQsI9",
+      "customerName": "Priya",
+      "message": "i need a vanilla cake on 22 sep 2026. Make it pastel blue with football decorations. Customer clarification: 2.5",
+      "decision": "AUTO_APPROVED",
+      "reasoning": "Quote ₹1875 for 2.5kg vanilla (2026-09-22), within auto-approve bounds.",
+      "clarificationQuestion": "What weight would you like the cake to be?",
+      "parsed": {
+        "items": [
+          {
+            "weightKg": 2.5,
+            "flavor": "vanilla",
+            "design": "pastel blue with football decorations",
+            "date": "2026-09-22"
+          }
+        ],
+        "confidence": "high",
+        "missingFields": [],
+        "reasoning": "All required cake details including weight, flavor, design, and date are explicitly provided in the customer's message and clarification.",
+        "usedFallback": false,
+        "raw": "i need a vanilla cake on 22 sep 2026. Make it pastel blue with football decorations. Customer clarification: 2.5"
+      },
+      "trace": [
+        {
+          "action": "AGENT_THINKING",
+          "reasoning": "Interpreting the customer message and identifying the requested bakery task."
+        },
+        {
+          "action": "TOOL_CALL",
+          "tool": "extract_order_details",
+          "reasoning": "Extracted 1 cake item(s) from the message."
+        },
+        {
+          "action": "TOOL_CALL",
+          "tool": "check_availability",
+          "reasoning": "Checking requested delivery dates against the bakery calendar."
+        },
+        {
+          "action": "TOOL_CALL",
+          "tool": "calculate_price",
+          "reasoning": "Calculated a deterministic quote of ₹1875."
+        },
+        {
+          "action": "POLICY_DECISION",
+          "reasoning": "All guardrails passed; the agent may proceed autonomously."
+        }
+      ],
+      "requiresHuman": false,
+      "status": "confirmed",
+      "createdAt": "2026-09-02T15:03:31.370Z",
+      "amount": 1875,
+      "itemsSummary": "2.5kg vanilla (2026-09-22)",
+      "customerTotal": 1875,
+      "paymentLink": "https://rzp.io/rzp/IbOTbqBU",
+      "perRunFeeCharged": 5,
+      "feeMode": "order-created"
+    }
+  ],
+  "auditLog": [
+    {
+      "timestamp": "2026-09-02T15:03:31.370Z",
+      "orderId": "d2EeQsI9",
+      "action": "NEEDS_CUSTOMER_INPUT",
+      "reasoning": "What weight would you like the cake to be?",
+      "amount": null,
+      "customerTotal": null
+    },
+    {
+      "timestamp": "2026-09-02T15:03:31.375Z",
+      "orderId": "d2EeQsI9",
+      "action": "AGENT_THINKING",
+      "reasoning": "Interpreting the customer message and identifying the requested bakery task."
+    },
+    {
+      "timestamp": "2026-09-02T15:03:31.378Z",
+      "orderId": "d2EeQsI9",
+      "action": "TOOL_CALL",
+      "tool": "extract_order_details",
+      "reasoning": "Extracted 1 cake item(s) from the message."
+    },
+    {
+      "timestamp": "2026-09-02T15:03:31.381Z",
+      "orderId": "d2EeQsI9",
+      "action": "HITL_REQUESTED",
+      "audience": "customer",
+      "reasoning": "What weight would you like the cake to be?"
+    },
+    {
+      "timestamp": "2026-09-02T15:03:49.178Z",
+      "orderId": "d2EeQsI9",
+      "action": "CUSTOMER_REPLY_RECEIVED",
+      "audience": "customer",
+      "reasoning": "Customer clarification received: 2.5"
+    },
+    {
+      "timestamp": "2026-09-02T15:03:49.199Z",
+      "orderId": "d2EeQsI9",
+      "action": "AGENT_THINKING",
+      "reasoning": "Interpreting the customer message and identifying the requested bakery task."
+    },
+    {
+      "timestamp": "2026-09-02T15:03:49.201Z",
+      "orderId": "d2EeQsI9",
+      "action": "TOOL_CALL",
+      "tool": "extract_order_details",
+      "reasoning": "Extracted 1 cake item(s) from the message."
+    },
+    {
+      "timestamp": "2026-09-02T15:03:49.203Z",
+      "orderId": "d2EeQsI9",
+      "action": "TOOL_CALL",
+      "tool": "check_availability",
+      "reasoning": "Checking requested delivery dates against the bakery calendar."
+    },
+    {
+      "timestamp": "2026-09-02T15:03:49.207Z",
+      "orderId": "d2EeQsI9",
+      "action": "TOOL_CALL",
+      "tool": "calculate_price",
+      "reasoning": "Calculated a deterministic quote of ₹1875."
+    },
+    {
+      "timestamp": "2026-09-02T15:03:49.209Z",
+      "orderId": "d2EeQsI9",
+      "action": "POLICY_DECISION",
+      "reasoning": "All guardrails passed; the agent may proceed autonomously."
+    },
+    {
+      "timestamp": "2026-09-02T15:03:50.179Z",
+      "orderId": "d2EeQsI9",
+      "action": "PAYMENT_LINK_CREATED_AUTONOMOUSLY",
+      "reasoning": "Clarification completed the order requirements; payment link created within guardrails.",
+      "amount": 1875
+    },
+    {
+      "timestamp": "2026-09-02T15:04:12.198Z",
+      "orderId": "d2EeQsI9",
+      "action": "CUSTOMER_PAYMENT_CONFIRMED",
+      "reasoning": "Customer paid ₹1875. Order confirmed: 2.5kg vanilla (2026-09-22).",
+      "amount": 1875
+    },
+    {
+      "timestamp": "2026-09-02T15:04:12.201Z",
+      "orderId": "d2EeQsI9",
+      "action": "TOOL_CALL",
+      "tool": "verify_customer_payment",
+      "reasoning": "Confirming payment before completing the order."
+    },
+    {
+      "timestamp": "2026-09-02T15:04:12.977Z",
+      "orderId": "d2EeQsI9",
+      "action": "PER_RUN_FEE_CHARGED",
+      "reasoning": "Agent completed the order-to-payment loop. Recorded a ₹5 usage fee in the merchant wallet.",
+      "amount": 5
+    }
+  ],
+  "wallet": {
+    "balance": 245,
+    "transactions": [
+      {
+        "id": "initial",
+        "amount": 250,
+        "type": "credit",
+        "label": "Demo wallet provisioned",
+        "meta": "Simulated starting balance",
+        "createdAt": "2026-09-02T15:02:42.173Z"
+      },
+      {
+        "id": "fee_d2EeQsI9",
+        "orderId": "d2EeQsI9",
+        "amount": -5,
+        "type": "debit",
+        "label": "Cake order completed",
+        "meta": "Agent fee: ₹5 automation",
+        "createdAt": "2026-09-02T15:04:12.977Z"
+      }
+    ],
+    "debitedOrders": [
+      "d2EeQsI9"
+    ]
+  },
+  "bookedDates": [
+    "2026-09-15",
+    "2026-09-22"
+  ]
+}
