@@ -34,6 +34,8 @@ desktop.ini
 # =======================
 .vscode/
 .idea/
+.replit
+replit.md
 *.suo
 *.ntvs*
 *.njsproj
