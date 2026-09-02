@@ -4,6 +4,12 @@ Cakebot is a guardrailed AI order agent for small bakeries. It turns a customer 
 
 **Razorpay AI Buildathon track:** AI Growth & Agentic Commerce
 
+## Live demo
+
+**Try Cakebot:** https://rpay-agent.up.railway.app/
+
+Cakebot is a pay-per-use AI commerce microservice. The bakery pays only when the agent successfully completes an order-to-payment workflow. Failed, rejected, ambiguous, and escalated requests are not charged.
+
 ## Why this is a strong fit
 
 - AI extracts multiple cake items and separates flavor from design.
@@ -14,6 +20,18 @@ Cakebot is a guardrailed AI order agent for small bakeries. It turns a customer 
 - The UI demonstrates normal, ambiguous, over-limit, and double-booked flows.
 - Buildathon demo mode can automatically complete mock payments after a payment link is created, while human approval remains manual.
 - Orders, audit events, wallet activity, and booked dates survive server restarts through a lightweight local state file.
+
+## Buildathon demo flow
+
+Use the live demo and try these scenarios:
+
+1. **Autonomous order** — `2kg chocolate cake for 2026-09-20` demonstrates extraction, pricing, availability, auto-approval, Razorpay Payment Link creation, and mock completion.
+2. **Customer clarification** — `I need a cake next week` demonstrates that the agent asks for missing details instead of guessing.
+3. **Scheduling guardrail** — `2kg chocolate cake for 2026-09-15` demonstrates conflict detection and safe escalation.
+4. **Human approval** — `6kg chocolate cake for 2026-09-20` demonstrates the ₹5,000 approval gate before payment-link creation.
+5. **Explainability and billing** — review the workflow timeline, audit trail, and merchant wallet after completion.
+
+The **Auto-complete mock payments** control is intended for the buildathon demonstration. Real Razorpay test-mode payments are confirmed through the signed webhook flow.
 
 The LLM is used for extraction and explanation. It never directly decides whether money may move.
 
@@ -68,6 +86,16 @@ deterministic policy engine
 3. Submit `2kg chocolate cake for 2026-09-15`; show baker escalation for the booked date.
 4. Submit `6kg chocolate cake for 2026-09-20`; show the ₹5,000 approval gate.
 5. Leave “Auto-complete mock payments” enabled, then open the audit trail and wallet ledger to show the completed loop.
+
+## Razorpay integration
+
+Cakebot uses Razorpay Payment Links for customer checkout and listens for the `payment_link.paid` webhook to complete the order. Configure the webhook endpoint as:
+
+```text
+https://rpay-agent.up.railway.app/api/webhooks/razorpay
+```
+
+The server verifies the Razorpay webhook signature before confirming payment. Never commit API keys or webhook secrets to the repository.
 
 ## Project structure
 
