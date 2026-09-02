@@ -45,6 +45,9 @@
     button, input, textarea { font: inherit; }
     button { cursor: pointer; }
     button:disabled { cursor: not-allowed; opacity: .55; }
+    .button.is-loading { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    .button.is-loading::before { content: ""; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     a { color: var(--blue); text-decoration: none; }
     a:hover { text-decoration: underline; }
     :focus-visible { outline: 3px solid rgba(23, 105, 224, .3); outline-offset: 2px; }
@@ -562,6 +565,8 @@
         button.disabled = busy;
         const defaultLabel = button.dataset.defaultLabel || button.textContent.trim();
         button.dataset.defaultLabel = defaultLabel;
+        button.classList.toggle('is-loading', busy && Boolean(button.dataset.loadingLabel));
+        button.setAttribute('aria-busy', busy ? 'true' : 'false');
         if (busy && button.dataset.loadingLabel) button.textContent = button.dataset.loadingLabel;
         if (!busy) button.textContent = defaultLabel;
       });
@@ -749,14 +754,10 @@
         state.orders = Array.isArray(orders) ? orders : [];
         state.audit = Array.isArray(audit) ? audit : [];
         state.wallet = wallet || { balance: 0, transactions: [] };
-        renderMetrics(); renderOrders(); renderActivity(); renderWalletTransactions();
-        if (activeInput) {
-          const restored = document.getElementById(activeInput.id);
-          if (restored) {
-            restored.value = activeInput.value;
-            restored.focus({ preventScroll: true });
-            if (typeof activeInput.selectionStart === 'number') restored.setSelectionRange(activeInput.selectionStart, activeInput.selectionEnd);
-          }
+        // Do not replace DOM while the user is typing. The polling refresh used
+        // to steal focus and occasionally reset the caret in the message box.
+        if (!activeInput) {
+          renderMetrics(); renderOrders(); renderActivity(); renderWalletTransactions();
         }
       } catch (error) {
         if (!silent) showToast(error.message, true);
@@ -869,7 +870,8 @@
         const design = document.getElementById('designPrompt').value.trim();
         if (!design) return showToast('Describe the cake design first.', true);
         setBusy('generate-preview', true);
-        const stage = document.getElementById('previewStage'); stage.innerHTML = '<strong>Generating preview…</strong><span>Calling generate_cake_design()</span>';
+        const stage = document.getElementById('previewStage');
+        stage.innerHTML = '<strong>Generating preview…</strong><span>The image model is working. This can take up to a minute.</span>';
         api('/api/design-preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ design }) })
           .then((result) => { stage.innerHTML = result.image ? `<img src="${result.image}" alt="Generated cake design preview" style="max-width:100%;max-height:330px;border-radius:10px;object-fit:contain;" /><span>Generated with ${escapeHtml(result.model || 'Hugging Face')}</span>` : `<strong>${escapeHtml(result.error || 'Preview failed')}</strong>`; const approveButton = document.getElementById('approveDesignButton'); if (approveButton) { approveButton.disabled = !result.image; approveButton.textContent = 'Approve design'; approveButton.classList.remove('success'); } if (!result.image) showToast(result.error || 'Preview failed', true); else showToast('Cake preview generated.'); })
           .catch((error) => { stage.innerHTML = `<strong>Preview unavailable</strong><span>${escapeHtml(error.message)}</span>`; showToast(error.message, true); })
