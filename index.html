@@ -211,8 +211,8 @@
     .guardrail span:first-child { color: var(--muted); font-size: 11px; }
     .guardrail strong { color: var(--ink-soft); font-size: 11px; text-align: right; }
     .flow-title { margin: 25px 0 10px; color: var(--muted-light); font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
-    .flow { display: flex; align-items: center; gap: 5px; }
-    .flow-step { display: flex; align-items: center; gap: 5px; color: var(--muted-light); font-size: 10px; font-weight: 700; }
+    .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 5px; min-width: 0; }
+    .flow-step { display: flex; align-items: center; gap: 5px; color: var(--muted-light); font-size: 10px; font-weight: 700; white-space: nowrap; }
     .flow-step::before { content: ""; display: block; width: 7px; height: 7px; border: 2px solid var(--line-strong); border-radius: 50%; }
     .flow-step.done { color: var(--green); }
     .flow-step.done::before { border-color: var(--green); background: var(--green); }
@@ -676,7 +676,9 @@
         const [tag, tagClass] = statusTag(order);
         const itemSummary = order.itemsSummary || getItems(order).map((item) => `${item.weightKg}kg ${item.flavor}`).join(' + ') || 'Order details need review';
         const feeText = order.perRunFeeCharged ? (order.feeMode === 'simulated' ? 'Fee simulated' : 'Razorpay order created') : 'Not charged';
-        return `<article class="card order-card"><div class="order-top"><div class="order-customer"><span class="customer-avatar">${escapeHtml(initials(order.customerName))}</span><div><h3>${escapeHtml(order.customerName || 'Anonymous customer')}</h3><div class="order-message">${escapeHtml(order.message)}</div></div></div><span class="status-tag ${tagClass}">${tag}</span></div><div class="order-summary"><div class="summary-item"><span>Cake items</span><strong>${escapeHtml(itemSummary)}</strong></div><div class="summary-item"><span>Delivery date</span><strong>${escapeHtml(formatDate(primaryDate(order)))}</strong></div><div class="summary-item"><span>Agent fee</span><strong>${escapeHtml(feeText)}</strong></div><div class="summary-item amount"><span>Customer total</span><strong>${order.customerTotal ? formatINR(order.customerTotal) : 'Pending'}</strong></div></div>${renderTimeline(order)}${decisionPanel(order)}${paymentBox(order)}${orderActions(order)}${order.actionError ? `<div class="error-inline">${escapeHtml(order.actionError)}</div>` : ''}</article>`;
+        const customerTotal = Number.isFinite(Number(order.customerTotal)) ? Number(order.customerTotal) : Number(order.amount);
+        const customerTotalLabel = Number.isFinite(customerTotal) && customerTotal > 0 ? formatINR(customerTotal) : 'Pending';
+        return `<article class="card order-card"><div class="order-top"><div class="order-customer"><span class="customer-avatar">${escapeHtml(initials(order.customerName))}</span><div><h3>${escapeHtml(order.customerName || 'Anonymous customer')}</h3><div class="order-message">${escapeHtml(order.message)}</div></div></div><span class="status-tag ${tagClass}">${tag}</span></div><div class="order-summary"><div class="summary-item"><span>Cake items</span><strong>${escapeHtml(itemSummary)}</strong></div><div class="summary-item"><span>Delivery date</span><strong>${escapeHtml(formatDate(primaryDate(order)))}</strong></div><div class="summary-item"><span>Agent fee</span><strong>${escapeHtml(feeText)}</strong></div><div class="summary-item amount"><span>Customer total</span><strong>${customerTotalLabel}</strong></div></div>${renderTimeline(order)}${decisionPanel(order)}${paymentBox(order)}${orderActions(order)}${order.actionError ? `<div class="error-inline">${escapeHtml(order.actionError)}</div>` : ''}</article>`;
       }).join('');
     }
 

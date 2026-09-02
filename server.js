@@ -115,7 +115,9 @@ app.post('/api/order', async (req, res) => {
     action: decision.decision,
     reasoning: decision.reasoning,
     amount: decision.amount || null,
-    customerTotal: decision.amount || null,
+    // Keep the customer-facing total explicit even when no design add-on is used.
+    // This prevents completed orders from falling back to a misleading "Pending" label.
+    customerTotal: Number.isFinite(decision.amount) ? decision.amount : null,
   });
   for (const event of decision.trace || []) logAudit({ orderId, ...event });
 
@@ -318,6 +320,7 @@ app.post('/api/order/:id/customer-reply', async (req, res) => {
     const decision = await decideOnOrder(combinedMessage);
     order.message = combinedMessage;
     Object.assign(order, decision);
+    order.customerTotal = Number.isFinite(decision.amount) ? decision.amount : order.customerTotal;
     order.status = decision.decision === 'ESCALATE' ? 'escalated' : decision.decision === 'NEEDS_CUSTOMER_INPUT' ? 'waiting_customer' : 'quoted';
     orders.set(order.id, order);
     logAudit({ orderId: order.id, action: 'CUSTOMER_REPLY_RECEIVED', audience: 'customer', reasoning: `Customer clarification received: ${reply}` });
