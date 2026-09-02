@@ -159,6 +159,9 @@
     .status-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 12px; }
     .status-banner.live { color: var(--green); background: var(--green-soft); border-color: #ccebdd; }
     .status-banner.mock { color: var(--amber); background: var(--amber-soft); border-color: #f2dfb8; }
+    .demo-controls { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; color:var(--muted); font-size:11px; }
+    .demo-controls label { display:flex; align-items:center; gap:7px; margin:0; font-weight:600; }
+    .demo-controls input { width:auto; }
 
     .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; margin: 0 0 30px; }
     .metric { min-height: 122px; padding: 19px; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: var(--shadow-soft); }
@@ -421,6 +424,7 @@
     </section>
 
     <div id="statusBanner" class="status-banner" role="status">Connecting to Cakebot…</div>
+    <div class="demo-controls"><span>Buildathon controls</span><label><input id="autoDemoPayment" type="checkbox" checked /> Auto-complete mock payments</label></div>
 
     <section class="metrics" aria-label="Overview metrics">
       <article class="metric"><div class="metric-label"><span>Orders completed</span><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="m8 12 2.5 2.5L16 9"/></svg></span></div><div id="metricCompleted" class="metric-value">—</div></article>
@@ -440,7 +444,7 @@
             <label for="message">Customer message</label>
             <textarea id="message" aria-describedby="messageHelp">I'd like a 2kg chocolate cake for 2026-09-20</textarea>
             <div id="messageHelp" class="helper" style="margin-top:7px;">Try one of the examples, or write the request in your own words.</div>
-            <div class="examples" aria-label="Example customer messages">
+            <div class="examples" aria-label="One-click demo scenarios">
               <button class="chip" type="button" data-example="2kg chocolate cake for September 20">2kg chocolate • Sep 20</button>
               <button class="chip" type="button" data-example="5kg red velvet cake for a wedding">5kg red velvet • wedding</button>
               <button class="chip" type="button" data-example="Make it pastel blue with football decorations">Pastel blue • football</button>
@@ -448,7 +452,7 @@
             </div>
             <div class="composer-footer">
               <span class="helper">Low-confidence or conflicting requests are always paused for review.</span>
-              <button id="submitButton" class="button primary" type="button" data-action="submit-order" data-busy-key="submit">Send to Cakebot <span aria-hidden="true">→</span></button>
+              <button id="submitButton" class="button primary" type="button" data-action="submit-order" data-busy-key="submit" data-loading-label="Cakebot is thinking…">Send to Cakebot <span aria-hidden="true">→</span></button>
             </div>
             <div id="conversation" class="conversation empty">Your conversation will appear here after the first request.</div>
           </div>
@@ -506,7 +510,7 @@
           <h3>Make the idea tangible.</h3>
           <p>Describe a cake design and keep it alongside the order. Preview generation will plug into this surface when connected.</p>
           <div class="preview-form"><label for="designPrompt">Design description</label><input id="designPrompt" placeholder="Pastel blue cake with football decorations…" /></div>
-          <div class="order-actions"><button class="button secondary" type="button" data-action="generate-preview">Generate preview</button><button id="approveDesignButton" class="button ghost" type="button" data-action="approve-design">Approve design</button></div>
+        <div class="order-actions"><button class="button secondary" type="button" data-action="generate-preview" data-busy-key="generate-preview" data-loading-label="Generating…">Generate preview</button><button id="approveDesignButton" class="button ghost" type="button" data-action="approve-design">Approve design</button></div>
         </div>
         <div id="previewStage" class="preview-stage" aria-label="Cake preview"><strong>Cake preview will appear here</strong><span>Ask Cakebot to generate a visual concept.</span></div>
       </article>
@@ -554,7 +558,13 @@
 
     function setBusy(key, busy) {
       busy ? state.busy.add(key) : state.busy.delete(key);
-      document.querySelectorAll(`[data-busy-key="${key}"]`).forEach((button) => { button.disabled = busy; });
+      document.querySelectorAll(`[data-busy-key="${key}"]`).forEach((button) => {
+        button.disabled = busy;
+        const defaultLabel = button.dataset.defaultLabel || button.textContent.trim();
+        button.dataset.defaultLabel = defaultLabel;
+        if (busy && button.dataset.loadingLabel) button.textContent = button.dataset.loadingLabel;
+        if (!busy) button.textContent = defaultLabel;
+      });
     }
 
     function statusTag(order) {
@@ -652,7 +662,7 @@
     function paymentBox(order) {
       if (order.status === 'confirmed') return `<div class="payment-box"><div><span class="payment-box-title">Payment confirmed</span><div class="payment-box-meta">Customer payment received · agent fee ${order.feeMode === 'simulated' ? 'simulated' : 'Razorpay order created'}</div></div><span class="status-tag success">Complete</span></div>`;
       if (!order.paymentLink) return '';
-      return `<div class="payment-box"><div><span class="payment-box-title">Razorpay payment link</span><div class="payment-box-meta">Ready for ${escapeHtml(order.customerName)} · <a href="${escapeHtml(order.paymentLink)}" target="_blank" rel="noopener">Open link</a></div></div><div class="payment-actions"><button class="button ghost" type="button" data-action="copy-link" data-id="${escapeHtml(order.id)}" data-busy-key="copy-link-${escapeHtml(order.id)}">Copy link</button><button class="button primary" type="button" data-action="mark-paid" data-id="${escapeHtml(order.id)}" data-busy-key="mark-paid-${escapeHtml(order.id)}"><span class="demo-label">Demo action</span>Simulate payment</button></div></div>`;
+      return `<div class="payment-box"><div><span class="payment-box-title">Razorpay payment link</span><div class="payment-box-meta">Ready for ${escapeHtml(order.customerName)} · <a href="${escapeHtml(order.paymentLink)}" target="_blank" rel="noopener">Open link</a></div></div><div class="payment-actions"><button class="button ghost" type="button" data-action="copy-link" data-id="${escapeHtml(order.id)}" data-busy-key="copy-link-${escapeHtml(order.id)}" data-loading-label="Copying…">Copy link</button><button class="button primary" type="button" data-action="mark-paid" data-id="${escapeHtml(order.id)}" data-busy-key="mark-paid-${escapeHtml(order.id)}" data-loading-label="Processing…"><span class="demo-label">Demo action</span>Simulate payment</button></div></div>`;
     }
 
     function orderActions(order) {
@@ -660,9 +670,9 @@
       const preview = order.designPreview;
       if (preview?.image && preview.status !== 'approved') return `<div class="reply-box"><label>Design preview · ${escapeHtml(preview.status || 'generated')}</label><img src="${preview.image}" alt="Generated cake design preview" style="display:block;max-width:240px;max-height:180px;margin:8px 0;border-radius:10px;" /><div class="order-actions"><button class="button success" type="button" data-action="approve-order-design" data-id="${escapeHtml(order.id)}">Approve design (+₹10)</button><button class="button ghost" type="button" data-action="reject-order-design" data-id="${escapeHtml(order.id)}">Reject</button></div></div>`;
       if (order.status === 'quoted' && order.parsed?.items?.[0]?.design && preview?.status !== 'approved') return `<div class="reply-box"><label>Custom design requested · ₹10 add-on</label><div class="order-actions"><button class="button secondary" type="button" data-action="generate-order-design" data-id="${escapeHtml(order.id)}" data-busy-key="generate-order-design-${escapeHtml(order.id)}">Generate design preview</button></div></div>`;
-      if (order.status === 'waiting_customer') return `<div class="reply-box"><label for="reply-${escapeHtml(order.id)}">Customer reply</label><input id="reply-${escapeHtml(order.id)}" placeholder="e.g. Chocolate flavor, please" /><button class="button primary" type="button" data-action="customer-reply" data-id="${escapeHtml(order.id)}" data-busy-key="customer-reply-${escapeHtml(order.id)}">Continue workflow</button></div>`;
-      if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return `<div class="order-actions"><button class="button warn" type="button" data-action="approve" data-id="${escapeHtml(order.id)}" data-busy-key="approve-${escapeHtml(order.id)}">Approve quote</button><button class="button danger" type="button" data-action="reject" data-id="${escapeHtml(order.id)}" data-busy-key="reject-${escapeHtml(order.id)}">Reject order</button></div>`;
-      if (order.status === 'quoted' && !order.paymentLink) return `<div class="order-actions"><button class="button primary" type="button" data-action="send-link" data-id="${escapeHtml(order.id)}" data-busy-key="send-payment-link-${escapeHtml(order.id)}">Create payment link</button></div>`;
+      if (order.status === 'waiting_customer') return `<div class="reply-box"><label for="reply-${escapeHtml(order.id)}">Customer reply</label><input id="reply-${escapeHtml(order.id)}" placeholder="e.g. Chocolate flavor, please" /><button class="button primary" type="button" data-action="customer-reply" data-id="${escapeHtml(order.id)}" data-busy-key="customer-reply-${escapeHtml(order.id)}" data-loading-label="Sending reply…">Continue workflow</button></div>`;
+      if (order.decision === 'PENDING_APPROVAL' && !order.approvedByBaker) return `<div class="order-actions"><button class="button warn" type="button" data-action="approve" data-id="${escapeHtml(order.id)}" data-busy-key="approve-${escapeHtml(order.id)}" data-loading-label="Approving…">Approve quote</button><button class="button danger" type="button" data-action="reject" data-id="${escapeHtml(order.id)}" data-busy-key="reject-${escapeHtml(order.id)}" data-loading-label="Rejecting…">Reject order</button></div>`;
+      if (order.status === 'quoted' && !order.paymentLink) return `<div class="order-actions"><button class="button primary" type="button" data-action="send-link" data-id="${escapeHtml(order.id)}" data-busy-key="send-payment-link-${escapeHtml(order.id)}" data-loading-label="Creating link…">Create payment link</button></div>`;
       return '';
     }
 
@@ -773,6 +783,9 @@
       try {
         const order = await api('/api/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerName, message }) });
         stopProcessing(); state.processing = false; renderProcessing(0, true); updateConversation(order); showToast('Request sent to Cakebot.'); await refresh(true);
+        if (document.getElementById('autoDemoPayment')?.checked && state.status.razorpayMode === 'mock' && order.status === 'awaiting_payment') {
+          await orderAction(order.id, 'simulate-payment', 'Demo payment completed automatically.');
+        }
       } catch (error) { stopProcessing(); state.processing = false; renderProcessing(0, false, true); showToast(error.message, true); }
       finally { setBusy('submit', false); }
     }
@@ -780,7 +793,14 @@
     function findOrder(id) { return state.orders.find((order) => order.id === id); }
     async function orderAction(id, action, successMessage) {
       const key = `${action}-${id}`; setBusy(key, true);
-      try { const result = await api(`/api/order/${encodeURIComponent(id)}/${action}`, { method: 'POST' }); showToast(successMessage); await refresh(true); return result; }
+      try {
+        const result = await api(`/api/order/${encodeURIComponent(id)}/${action}`, { method: 'POST' });
+        showToast(successMessage); await refresh(true);
+        if (action === 'send-payment-link' && document.getElementById('autoDemoPayment')?.checked && state.status.razorpayMode === 'mock' && result.order?.status === 'awaiting_payment') {
+          await orderAction(id, 'simulate-payment', 'Demo payment completed automatically.');
+        }
+        return result;
+      }
       catch (error) { const order = findOrder(id); if (order) order.actionError = error.message; renderOrders(); showToast(error.message, true); }
       finally { setBusy(key, false); }
     }
@@ -788,8 +808,10 @@
     async function copyLink(id) {
       const order = findOrder(id);
       if (!order?.paymentLink) return;
+      setBusy(`copy-link-${id}`, true);
       try { await navigator.clipboard.writeText(order.paymentLink); showToast('Payment link copied.'); }
       catch { showToast('Copy failed. Open the payment link instead.', true); }
+      finally { setBusy(`copy-link-${id}`, false); }
     }
 
     document.addEventListener('click', (event) => {
@@ -846,10 +868,12 @@
       if (action === 'generate-preview') {
         const design = document.getElementById('designPrompt').value.trim();
         if (!design) return showToast('Describe the cake design first.', true);
+        setBusy('generate-preview', true);
         const stage = document.getElementById('previewStage'); stage.innerHTML = '<strong>Generating preview…</strong><span>Calling generate_cake_design()</span>';
         api('/api/design-preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ design }) })
           .then((result) => { stage.innerHTML = result.image ? `<img src="${result.image}" alt="Generated cake design preview" style="max-width:100%;max-height:330px;border-radius:10px;object-fit:contain;" /><span>Generated with ${escapeHtml(result.model || 'Hugging Face')}</span>` : `<strong>${escapeHtml(result.error || 'Preview failed')}</strong>`; const approveButton = document.getElementById('approveDesignButton'); if (approveButton) { approveButton.disabled = !result.image; approveButton.textContent = 'Approve design'; approveButton.classList.remove('success'); } if (!result.image) showToast(result.error || 'Preview failed', true); else showToast('Cake preview generated.'); })
-          .catch((error) => { stage.innerHTML = `<strong>Preview unavailable</strong><span>${escapeHtml(error.message)}</span>`; showToast(error.message, true); });
+          .catch((error) => { stage.innerHTML = `<strong>Preview unavailable</strong><span>${escapeHtml(error.message)}</span>`; showToast(error.message, true); })
+          .finally(() => setBusy('generate-preview', false));
       }
     });
 

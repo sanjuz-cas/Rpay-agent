@@ -12,6 +12,8 @@ Cakebot is a guardrailed AI order agent for small bakeries. It turns a customer 
 - Razorpay Payment Links make the bakery transactable.
 - `/api/audit` records model output, tool calls, policy decisions, approvals, failures, and payment events.
 - The UI demonstrates normal, ambiguous, over-limit, and double-booked flows.
+- Buildathon demo mode can automatically complete mock payments after a payment link is created, while human approval remains manual.
+- Orders, audit events, wallet activity, and booked dates survive server restarts through a lightweight local state file.
 
 The LLM is used for extraction and explanation. It never directly decides whether money may move.
 
@@ -65,7 +67,7 @@ deterministic policy engine
 2. Submit `I need a cake next week`; show customer clarification.
 3. Submit `2kg chocolate cake for 2026-09-15`; show baker escalation for the booked date.
 4. Submit `6kg chocolate cake for 2026-09-20`; show the ₹5,000 approval gate.
-5. Complete one mock payment and open the audit trail and wallet ledger.
+5. Leave “Auto-complete mock payments” enabled, then open the audit trail and wallet ledger to show the completed loop.
 
 ## Project structure
 
